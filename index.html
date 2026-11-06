@@ -1,0 +1,837 @@
+<title>Marked Invoices</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: a nursery receiving desk. Left rail = the four sections, main = supplier "tabs" like the dividers in an invoice folder. Prices sit on sticker-shaped tags. */
+:root{
+  --bg:#F3F5EF; --surface:#FFFFFF; --sunk:#E8ECE3; --line:#D5DBCD;
+  --ink:#17261C; --muted:#5E6B60; --faint:#8A958B;
+  --leaf:#24573A; --leaf-ink:#FFFFFF; --leaf-soft:#DCE9DF;
+  --tag:#FFE7A3; --tag-ink:#3B2E00; --tag-edge:#E7C55A;
+  --up:#B4441F; --up-soft:#F8E1D8; --down:#1D6A8A; --down-soft:#DCEEF5;
+  --new:#6A4BB0; --new-soft:#EAE3F8; --warn:#9A6A00; --warn-soft:#FBF0D2;
+  --ok:#3F6E4C; --ok-soft:#E1EEE4;
+  --f-display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101712; --surface:#18221B; --sunk:#0C120E; --line:#2A372D;
+  --ink:#E7EEE7; --muted:#A3B0A5; --faint:#738075;
+  --leaf:#7FC79A; --leaf-ink:#0E1A12; --leaf-soft:#1E3326;
+  --tag:#E9C95E; --tag-ink:#2A2000; --tag-edge:#B8992F;
+  --up:#F08F6C; --up-soft:#3A2119; --down:#7CC3E0; --down-soft:#13303B;
+  --new:#BBA6F0; --new-soft:#2A2340; --warn:#E8C063; --warn-soft:#352B12;
+  --ok:#8FCB9F; --ok-soft:#1C3324; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#101712; --surface:#18221B; --sunk:#0C120E; --line:#2A372D;
+  --ink:#E7EEE7; --muted:#A3B0A5; --faint:#738075;
+  --leaf:#7FC79A; --leaf-ink:#0E1A12; --leaf-soft:#1E3326;
+  --tag:#E9C95E; --tag-ink:#2A2000; --tag-edge:#B8992F;
+  --up:#F08F6C; --up-soft:#3A2119; --down:#7CC3E0; --down-soft:#13303B;
+  --new:#BBA6F0; --new-soft:#2A2340; --warn:#E8C063; --warn-soft:#352B12;
+  --ok:#8FCB9F; --ok-soft:#1C3324; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
+.rail{position:sticky;top:0;align-self:start;height:100vh;padding:24px 16px;padding-left:max(16px,env(safe-area-inset-left,0px));border-right:1px solid var(--line);display:flex;flex-direction:column;gap:24px;background:var(--surface)}
+.brand{display:flex;gap:10px;align-items:center}
+.brand-mark{width:34px;height:34px;border-radius:8px;background:var(--leaf);color:var(--leaf-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:15px;letter-spacing:-.02em}
+.brand h1{font-family:var(--f-display);font-size:18px;font-weight:800;margin:0;letter-spacing:-.01em;line-height:1.1}
+.brand small{display:block;color:var(--muted);font-size:12px;font-weight:500}
+.nav{display:flex;flex-direction:column;gap:4px}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:none;padding:10px 12px;border-radius:8px;font-weight:600;cursor:pointer;color:var(--muted)}
+.nav button:hover{background:var(--sunk);color:var(--ink)}
+.nav button[aria-current="page"]{background:var(--leaf-soft);color:var(--ink)}
+.nav svg{width:18px;height:18px;flex:none}
+.nav .count{margin-left:auto;font-family:var(--f-mono);font-size:12px;color:var(--faint)}
+.rail-foot{margin-top:auto;font-size:12px;color:var(--faint);display:flex;flex-direction:column;gap:8px}
+.rail-foot a{color:var(--muted)}
+.linkbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink)}
+.linkbtn:hover{border-color:var(--leaf)}
+
+main{min-width:0;padding-block:28px 64px;padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px))}
+.page-head{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px 24px;margin-bottom:20px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--leaf)}
+h2.title{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,3.4vw,38px);letter-spacing:-.02em;line-height:1.05;margin:4px 0 0;text-wrap:balance}
+.sub{color:var(--muted);margin:6px 0 0}
+
+/* supplier tabs */
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px;padding:0;list-style:none}
+.tab{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);padding:8px 12px 8px 14px;border-radius:999px;cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap}
+.tab:hover{border-color:var(--leaf)}
+.tab[aria-selected="true"]{background:var(--leaf);border-color:var(--leaf);color:var(--leaf-ink)}
+.tab .n{font-family:var(--f-mono);font-size:12px;opacity:.75}
+.tab .dot{width:7px;height:7px;border-radius:50%;background:var(--new)}
+.tab[aria-selected="true"] .dot{background:var(--tag)}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:20px}
+.stat{background:var(--surface);padding:14px 16px;min-width:0}
+.stat b{display:block;font-family:var(--f-display);font-size:26px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+
+/* overview cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.card{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:14px 16px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card:hover{border-color:var(--leaf)}
+.card h3{font-family:var(--f-display);font-size:17px;font-weight:700;margin:0;line-height:1.2}
+.card .row{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted)}
+.card .row b{color:var(--ink);font-family:var(--f-mono);font-weight:500}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;line-height:1.5}
+.p-up{background:var(--up-soft);color:var(--up)}
+.p-down{background:var(--down-soft);color:var(--down)}
+.p-new{background:var(--new-soft);color:var(--new)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-same{background:var(--sunk);color:var(--muted)}
+.p-ok{background:var(--ok-soft);color:var(--ok)}
+
+/* stickers strip */
+.panel{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);margin-bottom:20px;min-width:0}
+.panel-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.panel-h h3{margin:0;font-size:14px;font-weight:700}
+.panel-h p{margin:0;font-size:13px;color:var(--muted)}
+.panel-h a{color:var(--leaf);font-weight:600}
+.stickers{display:flex;flex-wrap:wrap;gap:10px;padding:14px 16px}
+.sticker{position:relative;background:var(--tag);color:var(--tag-ink);border:1px solid var(--tag-edge);border-radius:4px 10px 10px 4px;padding:6px 12px 6px 20px;font-family:var(--f-mono);font-weight:600;font-size:14px;display:inline-flex;gap:8px;align-items:baseline}
+.sticker::before{content:"";position:absolute;left:7px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--surface);border:1px solid var(--tag-edge)}
+.sticker small{font-weight:500;opacity:.75;font-size:12px}
+.sticker.zero{opacity:.45}
+
+/* lines table */
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface);position:sticky;top:0}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+.pname{font-weight:600;min-width:220px}
+.psize{display:block;font-size:12px;color:var(--muted);font-weight:500;font-family:var(--f-mono)}
+.forcust{display:inline-block;margin-top:6px;font-size:12px;background:var(--leaf-soft);color:var(--ink);padding:2px 8px;border-radius:6px;font-weight:500}
+.notes{font-size:13px;color:var(--muted);min-width:200px;max-width:340px}
+.price{display:inline-block;font-family:var(--f-mono);font-weight:600;padding:2px 8px;border-radius:4px;background:var(--sunk);white-space:nowrap}
+.price.new{background:var(--tag);color:var(--tag-ink);box-shadow:inset 0 0 0 1px var(--tag-edge)}
+.belowguide{color:var(--up);font-weight:600}
+.mut{color:var(--faint)}
+
+/* orders */
+.og{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;align-items:start}
+.order{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);min-width:0}
+.order header{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.order header h3{margin:0;font-family:var(--f-display);font-size:16px;font-weight:700;flex:1 1 auto;min-width:0}
+.order header .po{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.order ul{list-style:none;margin:0;padding:6px 0}
+.order li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;padding:8px 14px}
+.tick{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line);display:grid;place-items:center;margin-top:1px}
+.tick.on{background:var(--leaf);border-color:var(--leaf);color:var(--leaf-ink)}
+.tick svg{width:12px;height:12px}
+.order li.done .what{color:var(--muted)}
+.what{font-weight:500}
+.who{display:block;font-size:13px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--surface);gap:2px}
+.seg button{border:0;background:none;padding:6px 14px;border-radius:999px;font-weight:600;font-size:14px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--leaf);color:var(--leaf-ink)}
+
+/* price lookup */
+.search{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:4px 6px 4px 14px;margin-bottom:8px;max-width:720px}
+.search:focus-within{border-color:var(--leaf)}
+.search svg{width:20px;height:20px;color:var(--muted);flex:none}
+.search input{flex:1;min-width:0;border:0;background:none;font:inherit;font-size:17px;padding:10px 0;color:var(--ink);outline:none}
+.hint{font-size:13px;color:var(--muted);margin:0 0 20px}
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 20px}
+.quick button{border:1px dashed var(--line);background:none;border-radius:999px;padding:4px 10px;font-size:13px;cursor:pointer;color:var(--muted)}
+.quick button:hover{border-color:var(--leaf);color:var(--ink)}
+.res{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);margin-bottom:12px;min-width:0}
+.res-h{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+.res-h h3{margin:0;font-family:var(--f-display);font-size:17px;font-weight:700;min-width:0}
+.res-h .sum{font-size:13px;color:var(--muted)}
+.res-h .sum b{font-family:var(--f-mono);color:var(--ink);font-weight:600}
+.best{font-size:11px;font-weight:700;color:var(--ok);text-transform:uppercase;letter-spacing:.06em;margin-left:6px}
+
+/* states */
+.state{border:1px dashed var(--line);border-radius:var(--r);padding:28px;text-align:center;color:var(--muted);background:var(--surface)}
+.state h3{margin:0 0 6px;color:var(--ink);font-family:var(--f-display);font-size:18px}
+.state p{margin:0 auto;max-width:52ch}
+.state .linkbtn{margin-top:14px}
+.skel{height:14px;border-radius:6px;background:linear-gradient(90deg,var(--sunk),var(--line),var(--sunk));background-size:200% 100%;animation:sh 1.4s infinite linear}
+@keyframes sh{to{background-position:-200% 0}}
+@media (prefers-reduced-motion: reduce){.skel{animation:none}}
+.weekpick{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.weekpick select{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 12px;font-weight:600}
+.fresh{font-size:12px;color:var(--faint)}
+
+/* editing */
+.rowbtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.mini{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:3px 8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink)}
+.mini:hover{border-color:var(--leaf)}
+.mini.primary{background:var(--leaf);border-color:var(--leaf);color:var(--leaf-ink)}
+.mini:disabled{opacity:.5;cursor:default}
+tr.editing td{background:var(--leaf-soft)}
+.edit{display:grid;grid-template-columns:90px 120px minmax(180px,1fr) auto;gap:10px;align-items:end}
+.edit label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.edit input{font:inherit;font-size:14px;text-transform:none;letter-spacing:0;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:7px 8px;min-width:0;width:100%}
+.edit .acts{display:flex;gap:6px}
+@media (max-width:860px){.edit{grid-template-columns:1fr 1fr}.edit .wide,.edit .acts{grid-column:1/-1}}
+button.tick{cursor:pointer;background:var(--surface);padding:0}
+button.tick:hover{border-color:var(--leaf)}
+button.tick.on{background:var(--leaf)}
+.order li.saving{opacity:.55}
+.addorder{padding:8px 14px 14px;border-top:1px dashed var(--line)}
+.addorder form{display:grid;gap:8px}
+.addorder input{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:7px 8px;min-width:0;width:100%}
+.addorder .acts{display:flex;gap:6px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;z-index:20;max-width:calc(100% - 32px);box-shadow:0 6px 24px rgba(0,0,0,.18)}
+.toast.bad{background:var(--up);color:#fff}
+.signin{display:flex;flex-direction:column;align-items:center;gap:12px}
+.gbtn{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer;font-size:15px}
+.gbtn:hover{border-color:var(--leaf)}
+
+@media (max-width: 860px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-right:0;border-bottom:1px solid var(--line)}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+  .brand small,.rail-foot{display:none}
+  .nav{flex-direction:row;overflow-x:auto;width:100%;gap:2px}
+  .nav button{width:auto;white-space:nowrap;padding:8px 10px;font-size:14px}
+  .nav .count{display:none}
+  main{padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .og{grid-template-columns:minmax(0,1fr)}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
+}
+</style>
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">MI</div>
+      <div><h1>Marked Invoices</h1><small>The Plant Shack</small></div>
+    </div>
+    <nav class="nav" aria-label="Sections">
+      <button data-view="week" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        This week <span class="count" id="c-week"></span></button>
+      <button data-view="prev">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
+        Previous weeks</button>
+      <button data-view="orders">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5h10M9 12h10M9 19h10"/><path d="m3 5 1.5 1.5L7 4M3 12l1.5 1.5L7 11M3 19l1.5 1.5L7 18"/></svg>
+        Orders <span class="count" id="c-orders"></span></button>
+      <button data-view="lookup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+        Price look up</button>
+    </nav>
+    <div class="rail-foot">
+      <span id="fresh">Not loaded yet</span>
+      <span id="who" hidden></span>
+      <button class="linkbtn" id="refresh" type="button">Refresh from sheet</button>
+      <a href="https://docs.google.com/spreadsheets/d/1SaFxcnz1dGpqPDu3fDAdQWGsB9XP22L7A605PcFx6YM/edit" target="_blank" rel="noopener">Open the sheet ↗</a>
+    </div>
+  </aside>
+  <main id="main" aria-live="polite"></main>
+</div>
+
+<script>
+/* Marked Invoices dashboard.
+   The Google Sheet is the back end. This page reads it and writes small changes back.
+   Two ways to reach the sheet:
+   - inside claude.ai: the viewer's Google Sheets connector (window.claude)
+   - anywhere else (GitHub Pages): Google sign-in, using GOOGLE_CLIENT_ID below */
+(() => {
+const SHEET = "1SaFxcnz1dGpqPDu3fDAdQWGsB9XP22L7A605PcFx6YM";
+const GOOGLE_CLIENT_ID = ""; // OAuth "Web application" client ID from Google Cloud. Needed only for the GitHub Pages version.
+const SERVER = "Google Sheets";
+const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+const REFRESH_MS = 5 * 60 * 1000;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = v => (v == null || isNaN(v)) ? "" : "$" + v.toLocaleString("en-AU", {minimumFractionDigits:2, maximumFractionDigits:2});
+const money0 = v => (v == null || isNaN(v)) ? "–" : "$" + Math.round(v).toLocaleString("en-AU");
+const num = s => { if (s == null) return null; const t = String(s).replace(/[$,\s]/g, ""); if (t === "") return null; const n = parseFloat(t); return isNaN(n) ? null : n; };
+const short = n => n.replace(/\b(Pty Ltd|Nurseries|Nursery|Wholesale|Horticultural|Cacti and Succulents)\b/gi, "").replace(/\s+/g, " ").trim() || n;
+const colLetter = i => { let s = ""; i++; while (i > 0){ const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+const quoteTab = t => "'" + String(t).replace(/'/g, "''") + "'";
+const store = {
+  get(k, ss){ try { return (ss ? sessionStorage : localStorage).getItem(k); } catch { return null; } },
+  set(k, v, ss){ try { (ss ? sessionStorage : localStorage).setItem(k, v); } catch {} },
+  del(k, ss){ try { (ss ? sessionStorage : localStorage).removeItem(k); } catch {} }
+};
+const VIEWS = ["week","prev","orders","lookup"];
+
+const state = {
+  view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : (store.get("mi.view") || "week"),
+  supplier: "__all", prevSupplier: "__all", ordersBucket: "this", query: "",
+  plants: null, plantCols: null, toPrint: null, orders: null, last5: null, tabs: null, sheetIds: {},
+  prevTab: null, prevData: {},
+  err: {}, readAt: null,
+  conn: "starting",          // starting | ready | signin | none
+  editing: null, adding: null, busy: {}
+};
+
+/* ---------- sheet access ---------- */
+class SheetError extends Error { constructor(code, message){ super(message || code); this.code = code; } }
+const api = { mode: null, mcp: null, token: null, tokenExp: 0, tokenClient: null };
+
+async function gfetch(path, opts = {}){
+  if (!api.token || Date.now() > api.tokenExp - 60_000){ state.conn = "signin"; render(); throw new SheetError("signin"); }
+  const res = await fetch("https://sheets.googleapis.com/v4/spreadsheets/" + SHEET + path, {
+    ...opts, headers: { "Authorization": "Bearer " + api.token, "Content-Type": "application/json" }
+  });
+  if (res.status === 401){ api.token = null; store.del("mi.tok", true); state.conn = "signin"; render(); throw new SheetError("signin"); }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new SheetError(res.status === 403 ? "forbidden" : res.status === 404 ? "not_found" : "upstream_error", body.error && body.error.message);
+  return body;
+}
+async function mcpCall(tool, input, cacheOpt){
+  try {
+    const r = await api.mcp.callTool(SERVER, tool, { spreadsheetId: SHEET, ...input }, cacheOpt ? { cache: cacheOpt } : { cache: false });
+    return r.payload || {};
+  } catch (e){ throw new SheetError(e.code || "upstream_error", e.message); }
+}
+const sheet = {
+  async values(range, fresh){
+    if (api.mode === "claude") return (await mcpCall("get_values", { range }, { staleTime: fresh ? 0 : 60_000, gcTime: 86_400_000, refresh: !!fresh })).values || [];
+    return (await gfetch("/values/" + encodeURIComponent(range) + "?valueRenderOption=FORMATTED_VALUE")).values || [];
+  },
+  async tabs(){
+    const p = api.mode === "claude"
+      ? await mcpCall("get_spreadsheet", { fields: ["sheets.properties.title", "sheets.properties.sheetId"] }, { staleTime: 300_000, gcTime: 86_400_000 })
+      : await gfetch("?fields=sheets.properties(sheetId,title)");
+    return (p.sheets || []).map(s => s.properties || {}).filter(p => p.title);
+  },
+  async write(range, values){
+    if (api.mode === "claude") return mcpCall("update_values", { range, values });
+    return gfetch("/values/" + encodeURIComponent(range) + "?valueInputOption=USER_ENTERED", { method: "PUT", body: JSON.stringify({ range, values }) });
+  },
+  async insertRowAfter(sheetId, row){ // row is 1-based; new row lands at row+1 with row's formatting
+    if (api.mode === "claude") return mcpCall("insert_dimension", { sheetId, dimension: "ROWS", startIndex: row, endIndex: row + 1, inheritFromBefore: true });
+    return gfetch(":batchUpdate", { method: "POST", body: JSON.stringify({ requests: [{ insertDimension: { range: { sheetId, dimension: "ROWS", startIndex: row, endIndex: row + 1 }, inheritFromBefore: true } }] }) });
+  }
+};
+
+/* Google sign-in (GitHub Pages version) */
+function loadGsi(){
+  return new Promise((ok, bad) => {
+    if (window.google && google.accounts && google.accounts.oauth2) return ok();
+    const s = document.createElement("script"); s.src = "https://accounts.google.com/gsi/client"; s.async = true;
+    s.onload = ok; s.onerror = () => bad(new Error("gsi")); document.head.appendChild(s);
+  });
+}
+function signIn(){
+  if (!api.tokenClient) return;
+  api.tokenClient.requestAccessToken({ prompt: store.get("mi.signedin") ? "" : "consent" });
+}
+function signOut(){
+  if (api.token && window.google) try { google.accounts.oauth2.revoke(api.token, () => {}); } catch {}
+  api.token = null; store.del("mi.tok", true); store.del("mi.signedin"); state.conn = "signin"; render();
+}
+
+async function connect(){
+  render();
+  if (window.claude && typeof window.claude.use === "function"){
+    const mcp = await window.claude.use("mcp");
+    if (!mcp){ state.conn = "none"; render(); return; }
+    api.mode = "claude"; api.mcp = mcp; state.conn = "ready"; loadAll(); return;
+  }
+  if (!GOOGLE_CLIENT_ID){ state.conn = "none"; render(); return; }
+  api.mode = "google";
+  try { await loadGsi(); } catch { state.conn = "none"; state.err.gsi = true; render(); return; }
+  api.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID, scope: SCOPE,
+    callback: r => {
+      if (r.error){ toast("Google sign-in didn't finish. Try again.", true); return; }
+      api.token = r.access_token; api.tokenExp = Date.now() + (r.expires_in || 3600) * 1000;
+      store.set("mi.tok", JSON.stringify({ t: api.token, e: api.tokenExp }), true); store.set("mi.signedin", "1");
+      state.conn = "ready"; render(); loadAll();
+    }
+  });
+  try { const t = JSON.parse(store.get("mi.tok", true) || "null"); if (t && t.e > Date.now() + 120_000){ api.token = t.t; api.tokenExp = t.e; } } catch {}
+  if (api.token){ state.conn = "ready"; loadAll(); } else { state.conn = "signin"; render(); }
+}
+
+/* ---------- parsing ---------- */
+function splitName(full){
+  const s = String(full || "").trim(); const i = s.lastIndexOf(" - ");
+  return i > 0 ? { name: s.slice(0, i).trim(), size: s.slice(i + 3).trim() } : { name: s, size: "" };
+}
+function classify(notes, retail, guide){
+  const n = (notes || "").toLowerCase(); const out = [];
+  if (/cost up|big jump/.test(n)) out.push(["up","Cost up"]);
+  else if (/cost down/.test(n)) out.push(["down","Cost down"]);
+  else if (/^new|new plant|new supplier|new size|new for|new name/.test(n)) out.push(["new","New"]);
+  else if (/same cost|same as last/.test(n)) out.push(["same","Same cost"]);
+  if (/under guide|shows red|price to set/.test(n) || (retail && guide && retail < guide - 0.005)) out.push(["warn","Under guide"]);
+  return out;
+}
+function colIndex(header, tests, fallback){
+  for (const re of tests){ const i = header.findIndex(h => re.test(String(h || "").trim())); if (i >= 0) return i; }
+  return fallback;
+}
+function invoiceCols(h){
+  h = h || [];
+  const ci = {
+    plant: colIndex(h, [/^plant/i], 0), comments: colIndex(h, [/comment|orders/i], 1),
+    qty: colIndex(h, [/^qty/i], 2), cost: colIndex(h, [/unit price|^cost/i], 3),
+    retail: colIndex(h, [/^retail/i], 4), notIn: colIndex(h, [/not in system/i], 5),
+    supplier: colIndex(h, [/business|supplier|nursery/i], 6), guide: colIndex(h, [/guide/i], 7),
+    notes: colIndex(h, [/^notes/i], -1)
+  };
+  return ci;
+}
+function parseInvoiceTab(values){
+  if (!values || !values.length) return { rows: [], cols: invoiceCols([]) };
+  const ci = invoiceCols(values[0]);
+  const rows = [];
+  for (let r = 1; r < values.length; r++){
+    const v = values[r] || [];
+    const plant = String(v[ci.plant] || "").trim(), supplier = String(v[ci.supplier] || "").trim();
+    if (!plant || !supplier) continue;
+    let notesCol = ci.notes;
+    if (notesCol < 0) notesCol = [8, 9].find(i => v[i] && String(v[i]).trim() && !/^\$?[\d.,]+$/.test(String(v[i]).trim())) ?? 9;
+    const notes = String(v[notesCol] || "").trim();
+    const inSys = num(v[ci.retail]), newRetail = num(v[ci.notIn]);
+    const retail = inSys ?? newRetail, guide = num(v[ci.guide]);
+    const { name, size } = splitName(plant);
+    rows.push({ row: r + 1, plant, name, size, supplier, comments: String(v[ci.comments] || "").trim(),
+      qty: num(v[ci.qty]) ?? 0, cost: num(v[ci.cost]), retail, isNewPrice: inSys == null && newRetail != null,
+      guide, notes, notesCol, tags: classify(notes, retail, guide) });
+  }
+  return { rows, cols: ci };
+}
+function parseOrders(values){
+  const groups = []; let bucket = "this"; let cur = null;
+  (values || []).forEach((v, i) => {
+    if (i === 0) return;
+    v = v || [];
+    const row = i + 1;
+    const a = String(v[0] ?? "").trim().toUpperCase(), b = String(v[1] || "").trim(), c = String(v[2] || "").trim();
+    if (!a && !b && !c) return;
+    if (a === "TRUE" || a === "FALSE" || (a === "" && b && cur && c)){
+      if (!cur){ cur = { title: "Unsorted", po: "", note: "", bucket, items: [], headerRow: row }; groups.push(cur); }
+      cur.items.push({ row, done: a === "TRUE", what: b, who: c });
+      return;
+    }
+    const t = String(v[0] || "").trim() || b;
+    if (/next week/i.test(t)){ bucket = "next"; cur = null; return; }
+    const po = (t.match(/PO-\d+/i) || [""])[0];
+    const note = (t.match(/\(([^)]+)\)/) || ["",""])[1] || (/already ordered/i.test(t) ? "already ordered" : "");
+    const title = t.split(/\s[–-]\s/)[0].replace(/\(.*\)/, "").trim();
+    cur = { title, po, note, bucket, items: [], headerRow: row }; groups.push(cur);
+  });
+  groups.forEach((g, i) => { g.id = g.headerRow + ":" + g.title; });
+  return groups.filter(g => g.items.length);
+}
+function parseToPrint(values){
+  return (values || []).slice(1).map(v => ({ supplier: String(v[0]||"").trim(), price: num(v[1]), qty: num(v[2]) ?? 0 }))
+    .filter(r => r.supplier && r.price != null);
+}
+function parseLast5(values){
+  return (values || []).map(v => {
+    v = v || []; const { name, size } = splitName(v[0]);
+    return { plant: String(v[0]||"").trim(), name: String(v[5] || name).trim(), size, cost: num(v[1]), retail: num(v[2]), supplier: String(v[3]||"").trim(), week: String(v[4]||"").trim() };
+  }).filter(r => r.plant);
+}
+
+/* ---------- loading ---------- */
+const READS = {
+  plants: { range: "Plants!A1:K1000", apply: v => { const p = parseInvoiceTab(v); state.plants = p.rows; state.plantCols = p.cols; } },
+  toPrint: { range: "'To Print'!A1:C400", apply: v => { state.toPrint = parseToPrint(v); } },
+  orders: { range: "Orders!A1:C1000", apply: v => { state.orders = parseOrders(v); } },
+  last5: { range: "'Last 5 Weeks'!A8:F3000", apply: v => { state.last5 = parseLast5(v); } }
+};
+const DENY = ["needs_reauth","server_not_connected","blocked_by_policy","approval_required","not_in_manifest","selection_required","forbidden","not_found"];
+async function load(key, fresh){
+  try { READS[key].apply(await sheet.values(READS[key].range, fresh)); delete state.err[key]; state.readAt = Date.now(); }
+  catch (e){ if (e.code === "signin") return; state.err[key] = e.code; if (DENY.includes(e.code)) state[key] = null; }
+  render();
+}
+async function loadTabs(){
+  try {
+    const all = await sheet.tabs();
+    all.forEach(t => { state.sheetIds[t.title] = t.sheetId; });
+    state.tabs = all.map(t => t.title).filter(t => /^w(?:eek)?\s?\d+$/i.test(t.trim()))
+      .map(t => ({ title: t, n: parseInt(t.replace(/\D/g, ""), 10) })).sort((a, b) => b.n - a.n);
+    if (!state.prevTab && state.tabs.length) state.prevTab = state.tabs[0].title;
+    delete state.err.tabs;
+  } catch (e){ if (e.code !== "signin") state.err.tabs = e.code; }
+  render();
+  if (state.view === "prev") loadPrev();
+}
+async function loadPrev(force){
+  const t = state.prevTab; if (!t || (state.prevData[t] && !force)) return;
+  state.prevData[t] = "loading"; render();
+  try { state.prevData[t] = parseInvoiceTab(await sheet.values(quoteTab(t) + "!A1:L1500", force)).rows; }
+  catch (e){ state.prevData[t] = { error: e.code || "upstream_error" }; }
+  render();
+}
+function loadAll(fresh){
+  if (state.conn !== "ready") return;
+  Object.keys(READS).forEach(k => load(k, fresh));
+  loadTabs();
+  if (fresh && state.view === "prev") loadPrev(true);
+}
+setInterval(() => { if (document.visibilityState === "visible" && !state.editing && !state.adding) loadAll(true); }, REFRESH_MS);
+
+/* ---------- writing ---------- */
+let toastTimer;
+function toast(msg, bad){
+  let t = $("#toast"); if (!t){ t = document.createElement("div"); t.id = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.className = "toast" + (bad ? " bad" : ""); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, bad ? 6000 : 2500);
+}
+const WRITE_ERR = {
+  moved: "The sheet changed since this page loaded, so nothing was saved. It has been reloaded; try again.",
+  signin: "Sign in with Google again to save.",
+  approval_required: "Allow this page to use Google Sheets to save changes.",
+  not_in_manifest: "Saving is turned off for this page. Turn Google Sheets on in the page's Permissions menu.",
+  forbidden: "Your Google account can't edit the Marked Invoices sheet.",
+  needs_reauth: "Reconnect Google Sheets in claude.ai Settings → Connectors, then try again."
+};
+async function guardRow(tab, row, col, expected){
+  // Re-read the cell so a save never lands on a row that has moved.
+  const v = await sheet.values(`${quoteTab(tab)}!${colLetter(col)}${row}`, true);
+  const got = String(((v[0] || [])[0]) ?? "").trim();
+  if (got !== String(expected).trim()) throw new SheetError("moved");
+}
+async function runWrite(key, reloadKey, fn, okMsg){
+  if (state.busy[key]) return;
+  state.busy[key] = true; render();
+  try { await fn(); if (okMsg) toast(okMsg); }
+  catch (e){
+    toast(WRITE_ERR[e.code] || "Couldn't save to the sheet" + (e.code === "server_unavailable" || e.code === "upstream_error" ? ". It may or may not have saved, so check after the reload." : ". " + (e.message || "")), true);
+  }
+  finally { delete state.busy[key]; await load(reloadKey, true); }
+}
+function toggleOrder(row){
+  const item = state.orders.flatMap(g => g.items).find(i => i.row === row); if (!item) return;
+  const to = !item.done;
+  runWrite("o" + row, "orders", async () => {
+    await guardRow("Orders", row, 1, item.what);
+    item.done = to; render();
+    await sheet.write(`Orders!A${row}`, [[to]]);
+  }, to ? "Ticked off" : "Unticked");
+}
+function addOrder(gid, what, who){
+  const g = state.orders.find(x => x.id === gid); if (!g || !what) return;
+  const last = g.items[g.items.length - 1];
+  const sid = state.sheetIds["Orders"];
+  if (sid == null){ toast("Couldn't find the Orders tab. Refresh and try again.", true); return; }
+  runWrite("add" + gid, "orders", async () => {
+    await guardRow("Orders", last.row, 1, last.what);
+    await sheet.insertRowAfter(sid, last.row);
+    await sheet.write(`Orders!A${last.row + 1}:C${last.row + 1}`, [[false, what, who || ""]]);
+    state.adding = null;
+  }, "Order added under " + g.title);
+}
+function saveLine(row, form){
+  const line = state.plants.find(r => r.row === row); const ci = state.plantCols; if (!line || !ci) return;
+  const qty = num(form.qty.value), retail = num(form.retail.value), notes = form.notes.value.trim();
+  if (form.qty.value.trim() && qty == null){ toast("Qty needs to be a number.", true); return; }
+  if (form.retail.value.trim() && retail == null){ toast("Retail needs to be a price like 19.95.", true); return; }
+  const priceCol = line.isNewPrice ? ci.notIn : ci.retail;
+  runWrite("l" + row, "plants", async () => {
+    await guardRow("Plants", row, ci.plant, line.plant);
+    if (qty !== line.qty) await sheet.write(`Plants!${colLetter(ci.qty)}${row}`, [[qty ?? ""]]);
+    if (retail !== line.retail) await sheet.write(`Plants!${colLetter(priceCol)}${row}`, [[retail ?? ""]]);
+    if (notes !== line.notes) await sheet.write(`Plants!${colLetter(line.notesCol)}${row}`, [[notes]]);
+    state.editing = null;
+  }, "Saved to the sheet");
+}
+function markEntered(row){
+  const line = state.plants.find(r => r.row === row); const ci = state.plantCols; if (!line || !ci || line.retail == null) return;
+  runWrite("l" + row, "plants", async () => {
+    await guardRow("Plants", row, ci.plant, line.plant);
+    const lo = Math.min(ci.retail, ci.notIn), hi = Math.max(ci.retail, ci.notIn);
+    if (hi - lo === 1){
+      const vals = ci.retail < ci.notIn ? [line.retail, ""] : ["", line.retail];
+      await sheet.write(`Plants!${colLetter(lo)}${row}:${colLetter(hi)}${row}`, [vals]);
+    } else {
+      await sheet.write(`Plants!${colLetter(ci.retail)}${row}`, [[line.retail]]);
+      await sheet.write(`Plants!${colLetter(ci.notIn)}${row}`, [[""]]);
+    }
+  }, money(line.retail) + " moved to the Retail column");
+}
+
+/* ---------- shared bits ---------- */
+const pill = ([k, label]) => `<span class="pill p-${k}">${esc(label)}</span>`;
+const thisWeekLabel = () => { const ns = (state.tabs || []).map(t => t.n); return ns.length ? "W" + (Math.max(...ns) + 1) : ""; };
+const ERRCOPY = {
+  needs_reauth: "Your Google Sheets sign-in has lapsed. Reconnect Google Sheets in claude.ai Settings → Connectors, then refresh.",
+  server_not_connected: "Google Sheets isn't connected for you. Add it in claude.ai Settings → Connectors, then refresh.",
+  selection_required: "You have more than one Google Sheets connector. Pick one when claude.ai asks, then refresh.",
+  not_in_manifest: "Google Sheets is turned off for this page. Turn it on from the page's Permissions menu.",
+  approval_required: "This page needs your OK to read the Marked Invoices sheet.",
+  blocked_by_policy: "Your organisation blocks this page from reading Google Sheets.",
+  server_unavailable: "Google Sheets didn't answer just now. Try Refresh in a moment.",
+  forbidden: "This Google account can't open the Marked Invoices sheet. Sign in with the shop account, or share the sheet with this one.",
+  not_found: "Couldn't find that tab in the sheet. Check it hasn't been renamed.",
+  tool_error: "Google Sheets couldn't read that tab. Check the tab still has the same name."
+};
+function connBlock(){
+  if (state.conn === "starting") return loadingBlock();
+  if (state.conn === "signin") return `<div class="state signin"><h3>Sign in to open the sheet</h3><p>Use the Google account that has the Marked Invoices sheet. This computer remembers it for the day.</p>
+    <button class="gbtn" data-act="signin" type="button"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.2C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.5c-.5-1.4-.8-2.9-.8-4.5s.3-3.1.8-4.5l-7.9-6.2C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.2C6.6 42.6 14.6 48 24 48z"/></svg>Sign in with Google</button></div>`;
+  if (state.conn === "none"){
+    if (state.err.gsi) return `<div class="state"><h3>Couldn't load Google sign-in</h3><p>Check this computer is online, then reload the page.</p></div>`;
+    if (!window.claude) return `<div class="state"><h3>Google sign-in isn't set up yet</h3><p>Add the Google client ID to <code>index.html</code> (see the README), then reload.</p></div>`;
+    return `<div class="state"><h3>Open this in Claude to see your sheet</h3><p>Inside claude.ai the dashboard reads the sheet through your Google Sheets connector.</p></div>`;
+  }
+  return "";
+}
+function sectionState(keys){
+  const c = connBlock(); if (c) return c;
+  const code = keys.map(k => state.err[k]).find(Boolean);
+  const missing = keys.some(k => state[k] == null);
+  if (code && missing){
+    return `<div class="state"><h3>Couldn't read the sheet</h3><p>${esc(ERRCOPY[code] || "Something went wrong reading Google Sheets. Try Refresh.")}</p>
+      <button class="linkbtn" data-act="refresh" type="button">${code === "approval_required" ? "Allow and load" : "Refresh"}</button></div>`;
+  }
+  return missing ? loadingBlock() : "";
+}
+function loadingBlock(){
+  return `<div class="panel" aria-busy="true"><div class="panel-h"><h3>Reading the Marked Invoices sheet…</h3></div>
+  <div style="padding:16px;display:grid;gap:12px">${[80,64,72,55,68].map(w => `<div class="skel" style="width:${w}%"></div>`).join("")}</div></div>`;
+}
+function groupBy(rows, key){ const m = new Map(); rows.forEach(r => { const k = r[key]; if (!m.has(k)) m.set(k, []); m.get(k).push(r); }); return m; }
+function totals(rows){
+  let units = 0, cost = 0, retail = 0, newp = 0, up = 0, warn = 0, cust = 0;
+  rows.forEach(r => {
+    units += r.qty || 0; cost += (r.qty || 0) * (r.cost || 0); retail += (r.qty || 0) * (r.retail || 0);
+    if (r.isNewPrice) newp++; if (r.tags.some(t => t[0] === "up")) up++; if (r.tags.some(t => t[0] === "warn")) warn++; if (r.comments) cust++;
+  });
+  return { lines: rows.length, units, cost, retail, newp, up, warn, cust };
+}
+function supplierTabs(groups, selected, attr){
+  let h = `<div class="tabs" role="tablist" aria-label="Suppliers">
+    <button class="tab" role="tab" ${attr}="__all" aria-selected="${selected === "__all"}">All suppliers <span class="n">${groups.size}</span></button>`;
+  for (const [name, rows] of groups){
+    const hasNew = rows.some(r => r.isNewPrice);
+    h += `<button class="tab" role="tab" ${attr}="${esc(name)}" aria-selected="${selected === name}" title="${esc(name)}">${hasNew ? `<span class="dot" aria-label="has new prices"></span>` : ""}${esc(short(name))} <span class="n">${rows.length}</span></button>`;
+  }
+  return h + `</div>`;
+}
+function statsBlock(t){
+  return `<div class="stats">
+    <div class="stat"><span>Lines</span><b>${t.lines}</b></div>
+    <div class="stat"><span>Plants in</span><b>${Math.round(t.units).toLocaleString("en-AU")}</b></div>
+    <div class="stat"><span>Invoice cost</span><b>${money0(t.cost)}</b></div>
+    <div class="stat"><span>Retail value</span><b>${money0(t.retail)}</b></div></div>`;
+}
+function flagPills(t){
+  return [t.newp && ["new", `${t.newp} new price${t.newp > 1 ? "s" : ""}`], t.up && ["up", `${t.up} cost up`], t.warn && ["warn", `${t.warn} under guide`], t.cust && ["ok", `${t.cust} for customers`]].filter(Boolean).map(pill).join("");
+}
+function overview(groups, attr){
+  let h = `<div class="cards">`;
+  for (const [name, rows] of groups){
+    const t = totals(rows);
+    h += `<button class="card" ${attr}="${esc(name)}" type="button"><h3>${esc(name)}</h3>
+      <div class="row"><span>${t.lines} lines · ${Math.round(t.units)} plants</span><b>${money0(t.cost)}</b></div>
+      <div class="pills">${flagPills(t) || pill(["same","Nothing to check"])}</div></button>`;
+  }
+  return h + `</div>`;
+}
+function linesTable(rows, editable){
+  return `<div class="tablewrap"><table><thead><tr><th>Plant</th><th class="r">Qty</th><th class="r">Cost</th><th class="r">Retail</th><th class="r">Guide</th><th>Status</th><th>Notes</th></tr></thead><tbody>
+  ${rows.map(r => {
+    const busy = !!state.busy["l" + r.row];
+    if (editable && state.editing === r.row){
+      return `<tr class="editing"><td class="pname">${esc(r.name)}<span class="psize">${esc(r.size)}</span></td><td colspan="6">
+        <form class="edit" data-line="${r.row}">
+          <label>Qty<input name="qty" inputmode="decimal" value="${r.qty ?? ""}" id="e-qty-${r.row}"></label>
+          <label>${r.isNewPrice ? "New retail" : "Retail"}<input name="retail" inputmode="decimal" value="${r.retail != null ? r.retail.toFixed(2) : ""}" id="e-ret-${r.row}"></label>
+          <label class="wide">Notes<input name="notes" value="${esc(r.notes)}" id="e-notes-${r.row}"></label>
+          <div class="acts"><button class="mini primary" type="submit" ${busy ? "disabled" : ""}>${busy ? "Saving…" : "Save"}</button><button class="mini" type="button" data-act="cancel-edit">Cancel</button></div>
+        </form></td></tr>`;
+    }
+    const below = r.retail && r.guide && r.retail < r.guide - 0.005;
+    return `<tr><td class="pname">${esc(r.name)}<span class="psize">${esc(r.size)}</span>${r.comments ? `<span class="forcust">${esc(r.comments)}</span>` : ""}
+      ${editable && state.conn === "ready" ? `<div class="rowbtns"><button class="mini" type="button" data-edit="${r.row}" ${busy ? "disabled" : ""}>Edit</button>${r.isNewPrice ? `<button class="mini" type="button" data-entered="${r.row}" ${busy ? "disabled" : ""} title="Moves the price from the Not In System column to Retail">${busy ? "Saving…" : "Now in system"}</button>` : ""}</div>` : ""}</td>
+    <td class="r num">${r.qty ? Math.round(r.qty * 100) / 100 : `<span class="mut">0</span>`}</td>
+    <td class="r num">${money(r.cost) || `<span class="mut">–</span>`}</td>
+    <td class="r">${r.retail != null ? `<span class="price${r.isNewPrice ? " new" : ""}" title="${r.isNewPrice ? "Not in system yet" : "In system"}">${money(r.retail)}</span>` : `<span class="mut">–</span>`}</td>
+    <td class="r num ${below ? "belowguide" : ""}">${money(r.guide)}</td>
+    <td><div class="pills">${r.isNewPrice ? pill(["new","Not in system"]) : ""}${r.tags.filter(t => !(r.isNewPrice && t[0] === "new")).map(pill).join("")}</div></td>
+    <td class="notes">${esc(r.notes)}</td></tr>`; }).join("")}
+  </tbody></table></div>`;
+}
+function stickersBlock(supplier){
+  const rows = (state.toPrint || []).filter(r => r.supplier.toLowerCase() === supplier.toLowerCase());
+  if (!rows.length) return "";
+  const total = rows.reduce((a, r) => a + r.qty, 0);
+  return `<div class="panel"><div class="panel-h"><h3>Price stickers to print</h3><p>${total} stickers from the To Print tab · <a href="https://blakeplantshack-prog.github.io/plant-shack-stickers/" target="_blank" rel="noopener">Open the stickers app ↗</a></p></div>
+    <div class="stickers">${rows.map(r => `<span class="sticker${r.qty ? "" : " zero"}">${money(r.price)} <small>× ${r.qty}</small></span>`).join("")}</div></div>`;
+}
+function supplierDetail(name, rows, editable){
+  const t = totals(rows);
+  return `${statsBlock(t)}<div class="pills" style="margin:-6px 0 16px">${flagPills(t)}</div>
+    ${editable ? stickersBlock(name) : ""}
+    <div class="panel"><div class="panel-h"><h3>${esc(name)}</h3><p>Yellow tags are prices from the Not In System column</p></div>${linesTable(rows, editable)}</div>`;
+}
+
+/* ---------- views ---------- */
+function viewWeek(){
+  const wk = thisWeekLabel();
+  const head = `<div class="page-head"><div><div class="eyebrow">This week${wk ? " · " + esc(wk) : ""}</div><h2 class="title">What came in this week</h2>
+    <p class="sub">Straight from the Plants tab. Pick a supplier to check their lines and stickers.</p></div></div>`;
+  const s = sectionState(["plants"]); if (s) return head + s;
+  const groups = groupBy(state.plants, "supplier");
+  if (!groups.size) return head + `<div class="state"><h3>No invoices yet this week</h3><p>When lines go into the Plants tab they'll show up here, grouped by supplier.</p></div>`;
+  if (state.supplier !== "__all" && !groups.has(state.supplier)) state.supplier = "__all";
+  const tabs = supplierTabs(groups, state.supplier, "data-sup");
+  if (state.supplier === "__all"){
+    const t = totals(state.plants);
+    const stick = (state.toPrint || []).reduce((a, r) => a + r.qty, 0);
+    return head + tabs + statsBlock(t) + `<div class="pills" style="margin:-6px 0 16px">${flagPills(t)}${stick ? pill(["same", `${stick} stickers to print`]) : ""}</div>` + overview(groups, "data-sup");
+  }
+  return head + tabs + supplierDetail(state.supplier, groups.get(state.supplier), true);
+}
+function viewPrev(){
+  const head = `<div class="page-head"><div><div class="eyebrow">Previous weeks</div><h2 class="title">Past invoices, week by week</h2>
+    <p class="sub">Each week tab in the sheet, laid out the same way as this week.</p></div></div>`;
+  const c = connBlock(); if (c) return head + c;
+  if (state.err.tabs && !state.tabs) return head + `<div class="state"><h3>Couldn't list the week tabs</h3><p>${esc(ERRCOPY[state.err.tabs] || "Try Refresh.")}</p><button class="linkbtn" data-act="tabs" type="button">Try again</button></div>`;
+  if (!state.tabs) return head + loadingBlock();
+  const recent = state.tabs.slice(0, 6), older = state.tabs.slice(6);
+  let h = `<div class="weekpick" role="group" aria-label="Week">${recent.map(w => `<button class="tab" data-week="${esc(w.title)}" aria-selected="${state.prevTab === w.title}">${esc(w.title.toUpperCase())}</button>`).join("")}
+    ${older.length ? `<label class="fresh" for="older">Older</label><select id="older"><option value="">Pick a week</option>${older.map(w => `<option ${state.prevTab === w.title ? "selected" : ""}>${esc(w.title)}</option>`).join("")}</select>` : ""}</div>`;
+  const d = state.prevData[state.prevTab];
+  if (!d || d === "loading") return head + h + loadingBlock();
+  if (d.error) return head + h + `<div class="state"><h3>Couldn't open ${esc(state.prevTab)}</h3><p>${esc(ERRCOPY[d.error] || "Try again.")}</p><button class="linkbtn" data-act="prev" type="button">Try again</button></div>`;
+  const groups = groupBy(d, "supplier");
+  if (!groups.size) return head + h + `<div class="state"><h3>${esc(state.prevTab)} has no lines</h3><p>That tab is empty or laid out differently.</p></div>`;
+  if (state.prevSupplier !== "__all" && !groups.has(state.prevSupplier)) state.prevSupplier = "__all";
+  h += supplierTabs(groups, state.prevSupplier, "data-psup");
+  if (state.prevSupplier === "__all") return head + h + statsBlock(totals(d)) + overview(groups, "data-psup");
+  return head + h + supplierDetail(state.prevSupplier, groups.get(state.prevSupplier), false);
+}
+function viewOrders(){
+  const head = (open) => `<div class="page-head"><div><div class="eyebrow">Orders</div><h2 class="title">Customer orders by supplier</h2>
+    <p class="sub">From the Orders tab. ${open != null ? `<strong>${open}</strong> not ticked off yet.` : ""}</p></div>
+    <div class="seg" role="group" aria-label="Which week"><button data-bucket="this" aria-pressed="${state.ordersBucket === "this"}">This week</button><button data-bucket="next" aria-pressed="${state.ordersBucket === "next"}">Next week</button></div></div>`;
+  const s = sectionState(["orders"]); if (s) return head(null) + s;
+  const gs = state.orders.filter(g => g.bucket === state.ordersBucket);
+  const open = gs.reduce((a, g) => a + g.items.filter(i => !i.done).length, 0);
+  if (!gs.length) return head(0) + `<div class="state"><h3>No orders ${state.ordersBucket === "next" ? "for next week" : "this week"}</h3><p>Orders added to the Orders tab show up here under their supplier.</p></div>`;
+  const tick = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>`;
+  const can = state.conn === "ready";
+  return head(open) + `<div class="og">${gs.map(g => {
+    const left = g.items.filter(i => !i.done).length;
+    const adding = state.adding === g.id, busyAdd = !!state.busy["add" + g.id];
+    return `<article class="order"><header><h3>${esc(g.title)}</h3>${g.po ? `<span class="po">${esc(g.po)}</span>` : ""}
+      ${g.note ? pill([/unsubmitted/i.test(g.note) ? "warn" : "same", g.note]) : ""}${left ? pill(["up", `${left} to do`]) : pill(["ok","All done"])}</header>
+      <ul>${g.items.map(i => { const busy = !!state.busy["o" + i.row]; return `<li class="${i.done ? "done" : ""}${busy ? " saving" : ""}">
+        ${can ? `<button class="tick ${i.done ? "on" : ""}" type="button" data-tick="${i.row}" aria-pressed="${i.done}" aria-label="${i.done ? "Untick" : "Tick off"} ${esc(i.what)}" ${busy ? "disabled" : ""}>${i.done ? tick : ""}</button>`
+              : `<span class="tick ${i.done ? "on" : ""}" role="img" aria-label="${i.done ? "Done" : "Not done"}">${i.done ? tick : ""}</span>`}
+        <div><span class="what">${esc(i.what)}</span>${i.who ? `<span class="who">${esc(i.who)}</span>` : ""}</div></li>`; }).join("")}</ul>
+      ${can ? `<div class="addorder">${adding ? `<form data-addform="${esc(g.id)}"><input name="what" placeholder="e.g. 6 x Gardenia Florida 140mm" required id="a-what-${esc(g.id)}"><input name="who" placeholder="Customer, order # and phone" id="a-who-${esc(g.id)}">
+        <div class="acts"><button class="mini primary" type="submit" ${busyAdd ? "disabled" : ""}>${busyAdd ? "Adding…" : "Add to sheet"}</button><button class="mini" type="button" data-act="cancel-add">Cancel</button></div></form>`
+        : `<button class="mini" type="button" data-add="${esc(g.id)}">+ Add order</button>`}</div>` : ""}</article>`; }).join("")}</div>`;
+}
+function viewLookup(){
+  const head = `<div class="page-head"><div><div class="eyebrow">Price look up</div><h2 class="title">What did we pay, and what do we sell it for?</h2>
+    <p class="sub">Searches this week plus the last five weeks, every supplier and size.</p></div></div>
+    <label class="search" for="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+    <input id="q" type="search" autocomplete="off" placeholder="Try “grevillea 140” or “westringia”" value="${esc(state.query)}"></label>`;
+  const s = sectionState(["plants","last5"]); if (s) return head + s;
+  const wk = thisWeekLabel() || "This week";
+  const all = [
+    ...state.plants.map(r => ({ plant: r.plant, name: r.name, size: r.size, cost: r.cost, retail: r.retail, supplier: r.supplier, week: wk, wn: 999 })),
+    ...state.last5.map(r => ({ ...r, wn: parseInt(r.week.replace(/\D/g, ""), 10) || 0 }))
+  ];
+  const q = state.query.trim().toLowerCase();
+  if (!q){
+    const pop = ["Grevillea","Westringia","Lomandra","Agapanthus","Callistemon","Murraya","Syzygium","Gardenia"];
+    return head + `<p class="hint">${all.length.toLocaleString("en-AU")} invoice lines to search.</p><div class="quick">${pop.map(p => `<button data-q="${p}" type="button">${p}</button>`).join("")}</div>`;
+  }
+  const words = q.split(/\s+/);
+  const hits = all.filter(r => { const hay = (r.plant + " " + r.supplier).toLowerCase(); return words.every(w => hay.includes(w)); });
+  if (!hits.length) return head + `<p class="hint">Nothing matches “${esc(state.query)}”. Try fewer words, or just the genus.</p>`;
+  const byName = groupBy(hits.map(r => ({ ...r, key: r.name + "|" + r.size })), "key");
+  const groups = [...byName.values()].sort((a, b) => Math.max(...b.map(x => x.wn)) - Math.max(...a.map(x => x.wn)) || b.length - a.length).slice(0, 40);
+  return head + `<p class="hint">${hits.length} line${hits.length > 1 ? "s" : ""} across ${byName.size} plant${byName.size > 1 ? "s" : ""}${byName.size > 40 ? " (showing 40, add a word to narrow it)" : ""}.</p>` +
+    groups.map(rows => {
+      rows.sort((a, b) => b.wn - a.wn || (a.cost ?? 1e9) - (b.cost ?? 1e9));
+      const costs = rows.map(r => r.cost).filter(v => v != null); const best = costs.length ? Math.min(...costs) : null;
+      const latest = rows.find(r => r.retail != null);
+      return `<section class="res"><div class="res-h"><h3>${esc(rows[0].name)} <span class="psize" style="display:inline">${esc(rows[0].size)}</span></h3>
+        <span class="sum">Last sold at <b>${latest ? money(latest.retail) : "–"}</b> · best cost <b>${best != null ? money(best) : "–"}</b></span></div>
+        <div class="tablewrap"><table><thead><tr><th>Week</th><th>Supplier</th><th class="r">Cost</th><th class="r">Retail</th><th class="r">Markup</th></tr></thead><tbody>
+        ${rows.map(r => `<tr><td class="num">${esc(r.week)}</td><td>${esc(r.supplier)}${r.cost != null && r.cost === best && costs.length > 1 ? `<span class="best">cheapest</span>` : ""}</td>
+          <td class="r num">${money(r.cost) || "–"}</td><td class="r">${r.retail != null ? `<span class="price">${money(r.retail)}</span>` : `<span class="mut">–</span>`}</td>
+          <td class="r num">${r.cost && r.retail ? Math.round(r.retail / r.cost * 100) + "%" : "–"}</td></tr>`).join("")}
+        </tbody></table></div></section>`; }).join("");
+}
+
+/* ---------- render ---------- */
+function render(){
+  document.querySelectorAll(".nav button").forEach(b => b.dataset.view === state.view ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
+  $("#c-week").textContent = state.plants ? state.plants.length : "";
+  $("#c-orders").textContent = state.orders ? state.orders.filter(g => g.bucket === "this").reduce((a, g) => a + g.items.filter(i => !i.done).length, 0) || "" : "";
+  $("#fresh").textContent = state.readAt ? "Sheet read " + new Date(state.readAt).toLocaleString("en-AU", { weekday: "short", hour: "numeric", minute: "2-digit" })
+    : state.conn === "signin" ? "Not signed in" : state.conn === "none" ? "Not connected" : "Reading the sheet…";
+  const who = $("#who");
+  if (api.mode === "google" && state.conn === "ready"){ who.hidden = false; who.innerHTML = `<button class="linkbtn" data-act="signout" type="button">Sign out of Google</button>`; } else who.hidden = true;
+
+  // keep focus and typed text across re-renders
+  const a = document.activeElement; const fid = a && a.id; let sel = null;
+  try { sel = a && a.selectionStart; } catch {}
+  const drafts = {}; document.querySelectorAll("#main input").forEach(i => { if (i.id) drafts[i.id] = i.value; });
+  $("#main").innerHTML = ({ week: viewWeek, prev: viewPrev, orders: viewOrders, lookup: viewLookup }[state.view])();
+  Object.entries(drafts).forEach(([id, v]) => { const i = document.getElementById(id); if (i && id !== "q") i.value = v; });
+  if (fid){ const i = document.getElementById(fid); if (i){ i.focus(); try { if (sel != null) i.setSelectionRange(sel, sel); } catch {} } }
+}
+function go(view){
+  state.view = view; store.set("mi.view", view);
+  if (location.hash.slice(1) !== view) history.replaceState(null, "", "#" + view);
+  render(); window.scrollTo(0, 0);
+  if (view === "prev") loadPrev();
+}
+function focusFirst(sel){ setTimeout(() => { const i = $(sel); i && i.focus(); }, 0); }
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.view) return go(t.dataset.view);
+  if (t.dataset.sup != null){ state.supplier = t.dataset.sup; state.editing = null; render(); return; }
+  if (t.dataset.psup != null){ state.prevSupplier = t.dataset.psup; render(); return; }
+  if (t.dataset.week){ state.prevTab = t.dataset.week; state.prevSupplier = "__all"; render(); loadPrev(); return; }
+  if (t.dataset.bucket){ state.ordersBucket = t.dataset.bucket; state.adding = null; render(); return; }
+  if (t.dataset.q){ state.query = t.dataset.q; render(); const q = $("#q"); q && q.focus(); return; }
+  if (t.dataset.tick) return toggleOrder(+t.dataset.tick);
+  if (t.dataset.add){ state.adding = t.dataset.add; render(); focusFirst(".addorder input[name=what]"); return; }
+  if (t.dataset.edit){ state.editing = +t.dataset.edit; render(); focusFirst(`#e-ret-${t.dataset.edit}`); return; }
+  if (t.dataset.entered) return markEntered(+t.dataset.entered);
+  const act = t.dataset.act || t.id;
+  if (act === "cancel-edit"){ state.editing = null; render(); return; }
+  if (act === "cancel-add"){ state.adding = null; render(); return; }
+  if (act === "refresh"){ if (state.conn === "signin") return signIn(); state.prevData = {}; return loadAll(true); }
+  if (act === "signin") return signIn();
+  if (act === "signout") return signOut();
+  if (act === "tabs") return loadTabs();
+  if (act === "prev"){ delete state.prevData[state.prevTab]; return loadPrev(); }
+});
+document.addEventListener("submit", e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.dataset.line) return saveLine(+f.dataset.line, f.elements);
+  if (f.dataset.addform) return addOrder(f.dataset.addform, f.elements.what.value.trim(), f.elements.who.value.trim());
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && (state.editing || state.adding)){ state.editing = null; state.adding = null; render(); } });
+document.addEventListener("input", e => { if (e.target.id === "q"){ state.query = e.target.value; render(); } });
+document.addEventListener("change", e => { if (e.target.id === "older" && e.target.value){ state.prevTab = e.target.value; state.prevSupplier = "__all"; render(); loadPrev(); } });
+window.addEventListener("hashchange", () => { const v = location.hash.slice(1); if (VIEWS.includes(v) && v !== state.view) go(v); });
+
+connect();
+})();
+</script>
