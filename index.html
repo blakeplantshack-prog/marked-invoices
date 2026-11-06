@@ -54,6 +54,15 @@ button{font:inherit;color:inherit}
 .nav button[aria-current="page"]{background:var(--leaf-soft);color:var(--ink)}
 .nav svg{width:18px;height:18px;flex:none}
 .nav .count{margin-left:auto;font-family:var(--f-mono);font-size:12px;color:var(--faint)}
+#stickerHost{margin-top:4px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:#fff}
+#stickerHost iframe{display:block;width:100%;height:calc(100vh - 230px);min-height:620px;border:0}
+.sendbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px 16px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);margin-bottom:12px}
+.sendbar p{margin:0;font-size:14px;color:var(--muted)}
+.sendbar p b{color:var(--ink)}
+.sendbar .btns{display:flex;flex-wrap:wrap;gap:8px}
+.sendbar select{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 10px}
+.btn{border:1px solid var(--leaf);background:var(--leaf);color:var(--leaf-ink);border-radius:8px;padding:7px 12px;font-size:14px;font-weight:700;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
 .rail-foot{margin-top:auto;font-size:12px;color:var(--faint);display:flex;flex-direction:column;gap:8px}
 .rail-foot a{color:var(--muted)}
 .linkbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink)}
@@ -231,6 +240,9 @@ button.tick.on{background:var(--leaf)}
       <button data-view="lookup">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
         Price look up</button>
+      <button data-view="stickers">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="8" cy="8" r="1.5"/></svg>
+        Stickers <span class="count" id="c-stickers"></span></button>
     </nav>
     <div class="rail-foot">
       <span id="fresh">Not loaded yet</span>
@@ -239,7 +251,7 @@ button.tick.on{background:var(--leaf)}
       <a href="https://docs.google.com/spreadsheets/d/1SaFxcnz1dGpqPDu3fDAdQWGsB9XP22L7A605PcFx6YM/edit" target="_blank" rel="noopener">Open the sheet ↗</a>
     </div>
   </aside>
-  <main id="main" aria-live="polite"></main>
+  <main id="main"><div id="view" aria-live="polite"></div><div id="stickerHost" hidden></div></main>
 </div>
 
 <script>
@@ -268,7 +280,10 @@ const store = {
   set(k, v, ss){ try { (ss ? sessionStorage : localStorage).setItem(k, v); } catch {} },
   del(k, ss){ try { (ss ? sessionStorage : localStorage).removeItem(k); } catch {} }
 };
-const VIEWS = ["week","prev","orders","lookup"];
+const VIEWS = ["week","prev","orders","lookup","stickers"];
+const STICKERS_ORIGIN = "https://blakeplantshack-prog.github.io";
+const STICKERS_URL = STICKERS_ORIGIN + "/plant-shack-stickers/";
+const sameOriginStickers = () => location.origin === STICKERS_ORIGIN;
 
 const state = {
   view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : (store.get("mi.view") || "week"),
@@ -670,7 +685,7 @@ function stickersBlock(supplier){
   const rows = (state.toPrint || []).filter(r => r.supplier.toLowerCase() === supplier.toLowerCase());
   if (!rows.length) return "";
   const total = rows.reduce((a, r) => a + r.qty, 0);
-  return `<div class="panel"><div class="panel-h"><h3>Price stickers to print</h3><p>${total} stickers from the To Print tab · <a href="https://blakeplantshack-prog.github.io/plant-shack-stickers/" target="_blank" rel="noopener">Open the stickers app ↗</a></p></div>
+  return `<div class="panel"><div class="panel-h"><h3>Price stickers to print</h3><p>${total} stickers from the To Print tab</p>${sendButton(supplier, "Add to print list")}</div>
     <div class="stickers">${rows.map(r => `<span class="sticker${r.qty ? "" : " zero"}">${money(r.price)} <small>× ${r.qty}</small></span>`).join("")}</div></div>`;
 }
 function supplierDetail(name, rows, editable){
@@ -678,6 +693,72 @@ function supplierDetail(name, rows, editable){
   return `${statsBlock(t)}<div class="pills" style="margin:-6px 0 16px">${flagPills(t)}</div>
     ${editable ? stickersBlock(name) : ""}
     <div class="panel"><div class="panel-h"><h3>${esc(name)}</h3><p>Yellow tags are prices from the Not In System column</p></div>${linesTable(rows, editable)}</div>`;
+}
+
+/* ---------- stickers app ---------- */
+function sendButton(supplier, label){
+  if (!sameOriginStickers()) return `<a class="mini" href="${STICKERS_URL}" target="_blank" rel="noopener">Open the stickers app ↗</a>`;
+  const busy = !!state.busy.send;
+  return `<button class="${supplier === "__all" ? "btn" : "mini primary"}" type="button" data-send="${esc(supplier)}" ${busy ? "disabled" : ""}>${busy ? "Adding…" : esc(label)}</button>`;
+}
+let frameReady = null;
+function ensureStickerFrame(reload){
+  const host = $("#stickerHost");
+  let f = host.querySelector("iframe");
+  if (!f){
+    f = document.createElement("iframe");
+    f.title = "Plant Shack Stickers";
+    f.setAttribute("allow", "local-network-access; local-network; loopback-network");
+    host.appendChild(f);
+    reload = true;
+  }
+  if (reload){
+    frameReady = new Promise(ok => { f.addEventListener("load", () => ok(f), { once: true }); });
+    f.src = "/plant-shack-stickers/?embed=" + Date.now();
+  }
+  return frameReady;
+}
+async function sendToPrintList(supplier){
+  if (!sameOriginStickers() || state.busy.send) return;
+  const rows = (state.toPrint || []).filter(r => r.qty > 0 && (supplier === "__all" || r.supplier.toLowerCase() === supplier.toLowerCase()));
+  if (!rows.length){ toast("Nothing to print for that supplier on the To Print tab.", true); return; }
+  state.busy.send = true; render();
+  try {
+    const f = await ensureStickerFrame();
+    let items = null;
+    for (let i = 0; i < 40 && !items; i++){ try { items = f.contentWindow.__sticker && f.contentWindow.__sticker.items(); } catch {} if (!items) await new Promise(r => setTimeout(r, 100)); }
+    if (!items || !items.length) throw new Error("The stickers app didn't load. Reload the page and try again.");
+    let queue = []; try { queue = JSON.parse(localStorage.getItem("queue") || "[]") || []; } catch {}
+    let stickers = 0, prices = 0; const missing = [];
+    for (const r of rows){
+      const it = items.find(x => x.kind === "plant" && Math.abs(x.p - r.price) < 0.001);
+      if (!it){ missing.push(money(r.price)); continue; }
+      const ex = queue.find(q => q.b === it.b);
+      if (ex) ex.qty += r.qty; else queue.push({ b: it.b, qty: r.qty });
+      stickers += r.qty; prices++;
+    }
+    localStorage.setItem("queue", JSON.stringify(queue));
+    await ensureStickerFrame(true);
+    if (state.view !== "stickers") go("stickers");
+    const miss = [...new Set(missing)];
+    toast(stickers ? `Added ${stickers} stickers to the print list` + (miss.length ? `. Not in the till: ${miss.join(", ")}` : "") : `None of those prices are PLANT $ items in the till: ${miss.join(", ")}`, miss.length > 0);
+  } catch (e){ toast(e.message || "Couldn't reach the stickers app.", true); }
+  finally { delete state.busy.send; render(); }
+}
+function viewStickers(){
+  const head = `<div class="page-head"><div><div class="eyebrow">Stickers</div><h2 class="title">Print price stickers</h2>
+    <p class="sub">The Plant Shack stickers app, right here. Send the To Print tab to its print list, then press Print list.</p></div></div>`;
+  if (!sameOriginStickers()) return head + `<div class="state"><h3>Stickers open in their own window here</h3><p>The stickers app only fits inside the dashboard on the GitHub version, because that's where the Zebra printer is set up.</p>
+    <a class="linkbtn" style="display:inline-block;margin-top:14px;text-decoration:none" href="${STICKERS_URL}" target="_blank" rel="noopener">Open the stickers app ↗</a></div>`;
+  const tp = state.toPrint || [];
+  const sups = [...new Set(tp.filter(r => r.qty > 0).map(r => r.supplier))];
+  const total = tp.reduce((a, r) => a + r.qty, 0);
+  const bar = state.conn !== "ready" ? `<div class="sendbar"><p>Sign in on This week to send the To Print tab here. You can still print by hand below.</p></div>`
+    : !state.toPrint ? `<div class="sendbar"><p>Reading the To Print tab…</p></div>`
+    : `<div class="sendbar"><p><b>${total}</b> stickers on the To Print tab across <b>${sups.length}</b> suppliers.</p>
+      <div class="btns">${sendButton("__all", "Add all to print list")}
+      <select id="sendSup" aria-label="Supplier"><option value="">One supplier…</option>${sups.map(s => `<option>${esc(s)}</option>`).join("")}</select></div></div>`;
+  return head + bar;
 }
 
 /* ---------- views ---------- */
@@ -787,8 +868,11 @@ function render(){
   // keep focus and typed text across re-renders
   const a = document.activeElement; const fid = a && a.id; let sel = null;
   try { sel = a && a.selectionStart; } catch {}
-  const drafts = {}; document.querySelectorAll("#main input").forEach(i => { if (i.id) drafts[i.id] = i.value; });
-  $("#main").innerHTML = ({ week: viewWeek, prev: viewPrev, orders: viewOrders, lookup: viewLookup }[state.view])();
+  const drafts = {}; document.querySelectorAll("#view input").forEach(i => { if (i.id) drafts[i.id] = i.value; });
+  $("#view").innerHTML = ({ week: viewWeek, prev: viewPrev, orders: viewOrders, lookup: viewLookup, stickers: viewStickers }[state.view])();
+  const host = $("#stickerHost"); const showFrame = state.view === "stickers" && sameOriginStickers();
+  host.hidden = !showFrame; if (showFrame) ensureStickerFrame();
+  $("#c-stickers").textContent = state.toPrint ? (state.toPrint.reduce((a, r) => a + r.qty, 0) || "") : "";
   Object.entries(drafts).forEach(([id, v]) => { const i = document.getElementById(id); if (i && id !== "q") i.value = v; });
   if (fid){ const i = document.getElementById(fid); if (i){ i.focus(); try { if (sel != null) i.setSelectionRange(sel, sel); } catch {} } }
 }
@@ -809,6 +893,7 @@ document.addEventListener("click", e => {
   if (t.dataset.bucket){ state.ordersBucket = t.dataset.bucket; state.adding = null; render(); return; }
   if (t.dataset.q){ state.query = t.dataset.q; render(); const q = $("#q"); q && q.focus(); return; }
   if (t.dataset.tick) return toggleOrder(+t.dataset.tick);
+  if (t.dataset.send) return sendToPrintList(t.dataset.send);
   if (t.dataset.add){ state.adding = t.dataset.add; render(); focusFirst(".addorder input[name=what]"); return; }
   if (t.dataset.edit){ state.editing = +t.dataset.edit; render(); focusFirst(`#e-ret-${t.dataset.edit}`); return; }
   if (t.dataset.entered) return markEntered(+t.dataset.entered);
@@ -829,7 +914,7 @@ document.addEventListener("submit", e => {
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && (state.editing || state.adding)){ state.editing = null; state.adding = null; render(); } });
 document.addEventListener("input", e => { if (e.target.id === "q"){ state.query = e.target.value; render(); } });
-document.addEventListener("change", e => { if (e.target.id === "older" && e.target.value){ state.prevTab = e.target.value; state.prevSupplier = "__all"; render(); loadPrev(); } });
+document.addEventListener("change", e => { if (e.target.id === "sendSup" && e.target.value){ const v = e.target.value; e.target.value = ""; sendToPrintList(v); return; } if (e.target.id === "older" && e.target.value){ state.prevTab = e.target.value; state.prevSupplier = "__all"; render(); loadPrev(); } });
 window.addEventListener("hashchange", () => { const v = location.hash.slice(1); if (VIEWS.includes(v) && v !== state.view) go(v); });
 
 connect();
