@@ -757,7 +757,8 @@ function viewStickers(){
     : !state.toPrint ? `<div class="sendbar"><p>Reading the To Print tab…</p></div>`
     : `<div class="sendbar"><p><b>${total}</b> stickers on the To Print tab across <b>${sups.length}</b> suppliers.</p>
       <div class="btns">${sendButton("__all", "Add all to print list")}
-      <select id="sendSup" aria-label="Supplier"><option value="">One supplier…</option>${sups.map(s => `<option>${esc(s)}</option>`).join("")}</select></div></div>`;
+      <select id="sendSup" aria-label="Supplier"><option value="">One supplier…</option>${sups.map(s => `<option>${esc(s)}</option>`).join("")}</select>
+      <a class="linkbtn" style="text-decoration:none" href="${STICKERS_URL}" target="_blank" rel="noopener" title="The print list carries over">Print in its own tab ↗</a></div></div>`;
   return head + bar;
 }
 
