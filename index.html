@@ -95,10 +95,14 @@ button{font:inherit;color:inherit}
 .btn:disabled{opacity:.5;cursor:default}
 #printSheet{display:none}
 @media print{
-  @page{margin:12mm}
+  @page{size:A4;margin:18mm 16mm}
+  html,body{min-height:0!important;height:auto!important;margin:0!important;padding:0!important;overflow:visible!important}
   body{background:#fff!important;color:#000!important}
   body>*:not(#printSheet){display:none!important}
-  #printSheet{display:block!important;font-family:var(--f-body);color:#000}
+  #printSheet{display:block!important;font-family:var(--f-body);color:#000;width:auto;max-width:100%;margin:0;padding:0 2mm}
+  #printSheet table{table-layout:auto}
+  #printSheet td{overflow-wrap:anywhere}
+  #printSheet table:last-child,#printSheet tbody tr:last-child{break-after:avoid;page-break-after:avoid}
   #printSheet .ps-sup{font-size:8pt;color:#555;margin:0 0 6pt}
   #printSheet table{width:100%;border-collapse:collapse;font-size:11pt}
   #printSheet th{font-size:9pt;text-align:left;border-bottom:1pt solid #000;padding:3pt 6pt;color:#000;background:none;position:static}
@@ -106,6 +110,38 @@ button{font:inherit;color:inherit}
   #printSheet .r{text-align:right;white-space:nowrap}
   #printSheet tr{break-inside:avoid}
 }
+.sup-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px}
+.sup-head h3{margin:0;font-size:24px;font-weight:700}
+.sup-acts{display:flex;gap:8px;flex-wrap:wrap}
+.legend{font-size:14px;color:var(--muted);margin:-4px 0 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.legend .price{font-size:13px;padding:0 6px}
+.lines{display:flex;flex-direction:column}
+.line{border-bottom:1px solid var(--line)}
+.line:last-child{border-bottom:0}
+.l-main{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:minmax(0,1fr) 56px 84px 96px 120px;gap:12px;align-items:center;padding:12px 16px;cursor:pointer}
+.l-main:hover{background:var(--sunk)}
+.l-main:focus-visible{outline:2px solid var(--leaf);outline-offset:-2px}
+.line.open .l-main{background:var(--leaf-soft)}
+.l-name{display:flex;flex-direction:column;gap:2px;min-width:0}
+.l-name b{font-weight:700}
+.l-name .forcust{align-self:flex-start}
+.l-qty,.l-cost{text-align:right;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:flex-end;font-size:16px}
+.l-qty small,.l-cost small{font-size:12px;color:var(--faint)}
+.l-cost{color:var(--muted)}
+.l-ret{text-align:right}
+.l-ret .price{font-size:17px}
+.l-flag{text-align:right}
+.flag{font-size:13px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.f-new{background:var(--new-soft);color:var(--new)}
+.f-up{background:var(--up-soft);color:var(--up)}
+.f-warn{background:var(--warn-soft);color:var(--warn)}
+.l-more{padding:4px 16px 14px;background:var(--leaf-soft);display:grid;gap:10px}
+.l-more dl{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.l-more dt{font-size:12px;color:var(--muted);font-weight:700}
+.l-more dd{margin:2px 0 0;font-size:15px}
+.line.editing{padding:12px 16px;background:var(--leaf-soft);display:grid;gap:10px}
+.line.editing .l-main{padding:0;cursor:default}
+@media (max-width:700px){.l-main{grid-template-columns:minmax(0,1fr) 44px 80px;row-gap:6px}.l-cost{display:none}.l-flag{grid-column:1/-1;text-align:left}}
 .rail-foot{margin-top:auto;font-size:14px;color:var(--faint);display:flex;flex-direction:column;gap:8px}
 .rail-foot a{color:var(--muted)}
 .linkbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink)}
@@ -737,29 +773,43 @@ function overview(groups, attr){
   }
   return h + `</div>`;
 }
+function lineFlag(r){
+  // one short, plain-English flag per line (or none)
+  const below = r.retail && r.guide && r.retail < r.guide - 0.005;
+  if (r.isNewPrice) return `<span class="flag f-new">Not in system</span>`;
+  if (r.tags.some(t => t[0] === "up")) return `<span class="flag f-up">Cost up</span>`;
+  if (below) return `<span class="flag f-warn">Under guide</span>`;
+  return "";
+}
 function linesTable(rows, editable){
-  return `<div class="tablewrap"><table><thead><tr><th>Plant</th><th class="r">Qty</th><th class="r">Cost</th><th class="r">Retail</th><th class="r">Guide</th><th>Status</th><th>Notes</th></tr></thead><tbody>
-  ${rows.map(r => {
+  const can = editable && state.conn === "ready";
+  return `<div class="lines">${rows.map(r => {
     const busy = !!state.busy["l" + r.row];
     if (editable && state.editing === r.row){
-      return `<tr class="editing"><td class="pname">${esc(r.name)}<span class="psize">${esc(r.size)}</span></td><td colspan="6">
+      return `<div class="line open editing"><div class="l-main"><div class="l-name"><b>${esc(r.name)}</b><span class="psize">${esc(r.size)}</span></div></div>
         <form class="edit" data-line="${r.row}">
           <label>Qty<input name="qty" inputmode="decimal" value="${r.qty ?? ""}" id="e-qty-${r.row}"></label>
           <label>${r.isNewPrice ? "New retail" : "Retail"}<input name="retail" inputmode="decimal" value="${r.retail != null ? r.retail.toFixed(2) : ""}" id="e-ret-${r.row}"></label>
           <label class="wide">Notes<input name="notes" value="${esc(r.notes)}" id="e-notes-${r.row}"></label>
           <div class="acts"><button class="mini primary" type="submit" ${busy ? "disabled" : ""}>${busy ? "Saving…" : "Save"}</button><button class="mini" type="button" data-act="cancel-edit">Cancel</button></div>
-        </form></td></tr>`;
+        </form></div>`;
     }
+    const open = state.openRow === r.row;
     const below = r.retail && r.guide && r.retail < r.guide - 0.005;
-    return `<tr><td class="pname">${esc(r.name)}<span class="psize">${esc(r.size)}</span>${r.comments ? `<span class="forcust">${esc(r.comments)}</span>` : ""}
-      ${editable && state.conn === "ready" ? `<div class="rowbtns"><button class="mini" type="button" data-edit="${r.row}" ${busy ? "disabled" : ""}>Edit</button>${r.isNewPrice ? `<button class="mini" type="button" data-entered="${r.row}" ${busy ? "disabled" : ""} title="Moves the price from the Not In System column to Retail">${busy ? "Saving…" : "Now in system"}</button>` : ""}</div>` : ""}</td>
-    <td class="r num">${r.qty ? Math.round(r.qty * 100) / 100 : `<span class="mut">0</span>`}</td>
-    <td class="r num">${money(r.cost) || `<span class="mut">–</span>`}</td>
-    <td class="r">${r.retail != null ? `<span class="price${r.isNewPrice ? " new" : ""}" title="${r.isNewPrice ? "Not in system yet" : "In system"}">${money(r.retail)}</span>` : `<span class="mut">–</span>`}</td>
-    <td class="r num ${below ? "belowguide" : ""}">${money(r.guide)}</td>
-    <td><div class="pills">${r.isNewPrice ? pill(["new","Not in system"]) : ""}${r.tags.filter(t => !(r.isNewPrice && t[0] === "new")).map(pill).join("")}</div></td>
-    <td class="notes">${esc(r.notes)}</td></tr>`; }).join("")}
-  </tbody></table></div>`;
+    return `<div class="line${open ? " open" : ""}">
+      <button class="l-main" type="button" data-open="${r.row}" aria-expanded="${open}">
+        <span class="l-name"><b>${esc(r.name)}</b><span class="psize">${esc(r.size)}</span>${r.comments ? `<span class="forcust">${esc(r.comments)}</span>` : ""}</span>
+        <span class="l-qty"><small>Qty</small>${r.qty ? Math.round(r.qty * 100) / 100 : 0}</span>
+        <span class="l-cost"><small>Cost</small>${money(r.cost) || "–"}</span>
+        <span class="l-ret">${r.retail != null ? `<span class="price${r.isNewPrice ? " new" : ""}">${money(r.retail)}</span>` : `<span class="mut">–</span>`}</span>
+        <span class="l-flag">${lineFlag(r)}</span>
+      </button>
+      ${open ? `<div class="l-more">
+        <dl><div><dt>Notes</dt><dd>${esc(r.notes) || "–"}</dd></div><div><dt>Guide (cost × 240%)</dt><dd class="${below ? "belowguide" : ""}">${money(r.guide) || "–"}</dd></div>
+        <div><dt>Status</dt><dd><div class="pills">${r.isNewPrice ? pill(["new","Not in system"]) : ""}${r.tags.filter(t => !(r.isNewPrice && t[0] === "new")).map(pill).join("") || "–"}</div></dd></div></dl>
+        ${can ? `<div class="rowbtns"><button class="mini" type="button" data-edit="${r.row}" ${busy ? "disabled" : ""}>Edit</button>${r.isNewPrice ? `<button class="mini" type="button" data-entered="${r.row}" ${busy ? "disabled" : ""} title="Moves the price from the Not In System column to Retail">${busy ? "Saving…" : "Now in system"}</button>` : ""}</div>` : ""}
+      </div>` : ""}
+    </div>`; }).join("")}</div>`;
 }
 /* Pick which stickers to print and how many. Choices live in this page only; the To Print tab isn't changed. */
 const pickKey = r => r.supplier.toLowerCase() + "|" + r.price.toFixed(2);
@@ -823,11 +873,17 @@ function supplierDetail(name, rows, editable){
       ${hist.slice(0, 60).map(r => `<tr><td class="num">${esc(r.week)}</td><td class="pname">${esc(r.name)}<span class="psize">${esc(r.size)}</span></td><td class="r num">${money(r.cost) || "–"}</td><td class="r">${r.retail != null ? `<span class="price">${money(r.retail)}</span>` : `<span class="mut">–</span>`}</td></tr>`).join("")}
       </tbody></table></div>` : `<p class="hint" style="padding:12px 16px;margin:0">Nothing matching from this supplier in the last 5 weeks.</p>`}</div>`;
   }
-  return `${statsBlock(t)}<div class="pills" style="margin:0 0 16px">${flagPills(t)}</div>
-    ${editable ? stickersBlock(name) : ""}
+  const hasStick = editable && (state.toPrint || []).some(r => r.supplier.toLowerCase() === name.toLowerCase());
+  const canPrint = api.mode !== "claude";
+  const legend = rows.some(r => r.isNewPrice) ? `<p class="legend"><span class="price new">$0.00</span> yellow price = not in the system yet. Tap a plant for notes and editing.</p>` : `<p class="legend">Tap a plant for notes and editing.</p>`;
+  return `<div class="sup-head"><h3>${esc(name)}</h3><div class="sup-acts">
+      ${canPrint ? `<button class="linkbtn" type="button" data-act="pricelist">Print price list</button>` : ""}
+      ${hasStick ? `<button class="linkbtn" type="button" data-act="togglestick" aria-expanded="${!!state.showStick}">${state.showStick ? "Hide stickers" : "Stickers to print"}</button>` : ""}</div></div>
+    ${hasStick && state.showStick ? stickersBlock(name) : ""}
     ${searchBox}
-    <div class="panel"><div class="panel-h"><h3>${esc(name)}</h3><p>${words.length ? `${shown.length} of ${rows.length} lines match` : "Yellow tags are prices from the Not In System column"}</p>${api.mode === "claude" ? "" : `<button class="mini" type="button" data-act="pricelist">Print price list</button>`}</div>
-    ${shown.length ? linesTable(shown, editable) : `<p class="hint" style="padding:12px 16px;margin:0">Nothing on this week's invoice matches “${esc(state.supQ)}”.</p>`}</div>${past}`;
+    ${legend}
+    ${words.length ? `<p class="hint">${shown.length} of ${rows.length} plants match</p>` : ""}
+    <div class="panel">${shown.length ? linesTable(shown, editable) : `<p class="hint" style="padding:12px 16px;margin:0">Nothing on this invoice matches “${esc(state.supQ)}”.</p>`}</div>${past}`;
 }
 
 /* ---------- stickers app ---------- */
@@ -1164,13 +1220,15 @@ function focusFirst(sel){ setTimeout(() => { const i = $(sel); i && i.focus(); }
 document.addEventListener("click", e => {
   const t = e.target.closest("button"); if (!t) return;
   if (t.dataset.view) return go(t.dataset.view);
-  if (t.dataset.sup != null){ state.supplier = t.dataset.sup; state.editing = null; state.supQ = ""; render(); return; }
+  if (t.dataset.sup != null){ state.supplier = t.dataset.sup; state.editing = null; state.supQ = ""; state.openRow = null; render(); return; }
   if (t.dataset.psup != null){ state.prevSupplier = t.dataset.psup; state.supQ = ""; render(); return; }
   if (t.dataset.week){ state.prevTab = t.dataset.week; state.prevSupplier = "__all"; render(); loadPrev(); return; }
   if (t.dataset.bucket){ state.ordersBucket = t.dataset.bucket; state.adding = null; render(); return; }
   if (t.dataset.q){ state.query = t.dataset.q; render(); const q = $("#q"); q && q.focus(); return; }
   if (t.dataset.tick) return toggleOrder(+t.dataset.tick);
   if (t.dataset.send) return sendToPrintList(t.dataset.send);
+  if (t.dataset.open){ const r = +t.dataset.open; state.openRow = state.openRow === r ? null : r; render(); return; }
+  if (t.dataset.act === "togglestick"){ state.showStick = !state.showStick; render(); return; }
   if (t.dataset.act === "pricelist"){
     const prev = state.view === "prev", sup = prev ? state.prevSupplier : state.supplier;
     const src = prev ? state.prevData[state.prevTab] : state.plants;
