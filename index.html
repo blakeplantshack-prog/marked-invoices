@@ -1,7 +1,7 @@
 <title>Marked Invoices</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: a nursery receiving desk. Left rail = the four sections, main = supplier "tabs" like the dividers in an invoice folder. Prices sit on sticker-shaped tags. */
 :root{
@@ -12,12 +12,12 @@
   --up:#B4441F; --up-soft:#F8E1D8; --down:#1D6A8A; --down-soft:#DCEEF5;
   --new:#6A4BB0; --new-soft:#EAE3F8; --warn:#9A6A00; --warn-soft:#FBF0D2;
   --ok:#3F6E4C; --ok-soft:#E1EEE4;
-  --f-display:"Inter", "Segoe UI", system-ui, sans-serif;
-  --f-body:"Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --f-mono:"Inter", "Segoe UI", system-ui, sans-serif;
+  --f-display:"Nunito", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono:"Nunito", "Segoe UI", system-ui, sans-serif;
   --r:10px;
 }
-media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#101712; --surface:#18221B; --sunk:#0C120E; --line:#2A372D;
   --ink:#E7EEE7; --muted:#A3B0A5; --faint:#738075;
   --leaf:#7FC79A; --leaf-ink:#0E1A12; --leaf-soft:#1E3326;
@@ -37,7 +37,7 @@ media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
 }
 *{box-sizing:border-box}
 html,body{min-height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;font-feature-settings:"tnum","cv11"}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;font-feature-settings:"tnum"}
 button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
 .num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
@@ -85,7 +85,7 @@ button{font:inherit;color:inherit}
 .pstat.bad::before{background:var(--up)}
 .pbox{padding:12px 16px;display:grid;gap:8px;font-size:14px;color:var(--muted)}
 .pbox select{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface);color:var(--ink);width:100%}
-media (max-width:860px){.sk{grid-template-columns:minmax(0,1fr)}.sk-side{position:static;order:-1}}
+@media (max-width:860px){.sk{grid-template-columns:minmax(0,1fr)}.sk-side{position:static;order:-1}}
 .sendbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px 16px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);margin-bottom:12px}
 .sendbar p{margin:0;font-size:14px;color:var(--muted)}
 .sendbar p b{color:var(--ink)}
@@ -94,8 +94,8 @@ media (max-width:860px){.sk{grid-template-columns:minmax(0,1fr)}.sk-side{positio
 .btn{border:1px solid var(--leaf);background:var(--leaf);color:var(--leaf-ink);border-radius:8px;padding:7px 12px;font-size:14px;font-weight:600;cursor:pointer}
 .btn:disabled{opacity:.5;cursor:default}
 #printSheet{display:none}
-media print{
-  page{size:A4;margin:18mm 16mm}
+@media print{
+  @page{size:A4;margin:18mm 16mm}
   html,body{min-height:0!important;height:auto!important;margin:0!important;padding:0!important;overflow:visible!important}
   body{background:#fff!important;color:#000!important}
   body>*:not(#printSheet){display:none!important}
@@ -128,6 +128,7 @@ media print{
 .l-name{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;column-gap:16px;row-gap:6px;min-width:0}
 .l-head{display:grid;grid-template-columns:minmax(0,1fr) 48px 72px 84px 112px;gap:16px;padding:10px 20px;font-size:13px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line)}
 .l-head .r{text-align:right}
+@media (max-width:700px){.hide-sm{display:none}}
 .l-name b{font-weight:500;font-size:16.5px}
 b,strong{font-weight:600}
 .l-name .psize{display:inline-block;margin:0;font-size:14px;font-weight:600;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1px 8px;white-space:nowrap;font-family:var(--f-body)}
@@ -148,7 +149,7 @@ b,strong{font-weight:600}
 .l-more dd{margin:2px 0 0;font-size:15px}
 .line.editing{padding:12px 16px;background:var(--leaf-soft);display:grid;gap:10px}
 .line.editing .l-main{padding:0;cursor:default}
-media (max-width:700px){.l-main{grid-template-columns:minmax(0,1fr) 44px 80px;row-gap:6px;padding:14px 16px}.l-head{grid-template-columns:minmax(0,1fr) 44px 80px;padding:10px 16px}.l-head span:last-child{display:none}.l-cost,.l-hcost{display:none}.l-flag{grid-column:1/-1;text-align:left}}
+@media (max-width:700px){.l-main{grid-template-columns:minmax(0,1fr) 44px 80px;row-gap:6px;padding:14px 16px}.l-head{grid-template-columns:minmax(0,1fr) 44px 80px;padding:10px 16px}.l-head span:last-child{display:none}.l-cost,.l-hcost{display:none}.l-flag{grid-column:1/-1;text-align:left}}
 .rail-foot{margin-top:auto;font-size:14px;color:var(--faint);display:flex;flex-direction:column;gap:8px}
 .rail-foot a{color:var(--muted)}
 .linkbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;font-size:14px;font-weight:500;cursor:pointer;color:var(--ink)}
@@ -156,6 +157,11 @@ media (max-width:700px){.l-main{grid-template-columns:minmax(0,1fr) 44px 80px;ro
 
 main{min-width:0;padding-block:28px 64px;padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px))}
 .page-head{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px 24px;margin-bottom:20px}
+.weekbadge{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--leaf);color:var(--leaf-ink);border-radius:14px;padding:8px 18px;line-height:1.1;align-self:start}
+.weekbadge small{font-size:12px;text-transform:uppercase;letter-spacing:.06em;opacity:.85}
+.weekbadge b{font-size:28px;font-weight:700}
+.page-head:has(.weekbadge){flex-wrap:nowrap;align-items:start}
+@media (max-width:860px){.weekbadge{padding:6px 12px;border-radius:12px}.weekbadge small{font-size:10px}.weekbadge b{font-size:22px}}
 .eyebrow{font-size:14px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--leaf)}
 h2.title{font-family:var(--f-display);font-weight:600;font-size:clamp(26px,3.4vw,38px);letter-spacing:-.02em;line-height:1.05;margin:4px 0 0;text-wrap:balance}
 .sub{color:var(--muted);margin:6px 0 0}
@@ -268,8 +274,8 @@ td.r,th.r{text-align:right}
 .state p{margin:0 auto;max-width:52ch}
 .state .linkbtn{margin-top:14px}
 .skel{height:14px;border-radius:6px;background:linear-gradient(90deg,var(--sunk),var(--line),var(--sunk));background-size:200% 100%;animation:sh 1.4s infinite linear}
-keyframes sh{to{background-position:-200% 0}}
-media (prefers-reduced-motion: reduce){.skel{animation:none}}
+@keyframes sh{to{background-position:-200% 0}}
+@media (prefers-reduced-motion: reduce){.skel{animation:none}}
 .weekpick{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
 .weekpick select{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 12px;font-weight:500}
 .fresh{font-size:14px;color:var(--faint)}
@@ -285,7 +291,7 @@ tr.editing td{background:var(--leaf-soft)}
 .edit label{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .edit input{font:inherit;font-size:14px;text-transform:none;letter-spacing:0;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:7px 8px;min-width:0;width:100%}
 .edit .acts{display:flex;gap:6px}
-media (max-width:860px){.edit{grid-template-columns:1fr 1fr}.edit .wide,.edit .acts{grid-column:1/-1}}
+@media (max-width:860px){.edit{grid-template-columns:1fr 1fr}.edit .wide,.edit .acts{grid-column:1/-1}}
 button.tick{cursor:pointer;background:var(--surface);padding:0}
 button.tick:hover{border-color:var(--leaf)}
 button.tick.on{background:var(--leaf)}
@@ -306,20 +312,21 @@ button.tick.on{background:var(--leaf)}
 .bigmsg h3{margin:0 0 6px;font-size:26px;font-weight:600}
 .bigmsg p{margin:0 0 4px;font-size:17px;color:var(--muted)}
 .bigmsg button{margin-top:16px}
-keyframes bmIn{from{opacity:0}to{opacity:1}}
+@keyframes bmIn{from{opacity:0}to{opacity:1}}
 .signin{display:flex;flex-direction:column;align-items:center;gap:12px}
 .gbtn{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:10px 18px;font-weight:600;cursor:pointer;font-size:15px}
 .gbtn:hover{border-color:var(--leaf)}
 
-media (max-width: 860px){
+@media (max-width: 860px){
   .app{grid-template-columns:minmax(0,1fr)}
   .rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-right:0;border-bottom:1px solid var(--line)}
   body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
   .brand small,.rail-foot{display:none}
-  .nav{flex-direction:row;overflow-x:auto;width:100%;gap:2px}
-  .nav button{width:auto;white-space:nowrap;padding:8px 10px;font-size:15px}
+  .nav{position:fixed;left:0;right:0;bottom:0;z-index:15;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;background:var(--surface);border-top:1px solid var(--line);padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px));box-shadow:0 -4px 16px rgba(0,0,0,.06)}
+  .nav button{width:auto;flex-direction:column;justify-content:center;gap:2px;white-space:normal;text-align:center;line-height:1.15;padding:6px 2px;font-size:11.5px;min-height:54px;border-radius:10px}
+  .nav button svg{width:22px;height:22px}
   .nav .count{display:none}
-  main{padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  main{padding-block:20px calc(96px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .og{grid-template-columns:minmax(0,1fr)}
   .tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
@@ -1186,7 +1193,7 @@ function viewOrders(){
 }
 function viewLookup(){
   const head = `<div class="page-head"><div><div class="eyebrow">Price look up</div><h2 class="title">What did we pay, and what do we sell it for?</h2>
-    <p class="sub">Searches this week plus the last five weeks, every supplier and size.</p></div></div>
+    <p class="sub">Searches this week plus the last five weeks, every supplier and size.</p></div>${thisWeekLabel() ? `<div class="weekbadge"><small>We're in</small><b>${esc(thisWeekLabel())}</b></div>` : ""}</div>
     <label class="search" for="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
     <input id="q" type="search" autocomplete="off" placeholder="Try “grevillea 140” or “westringia”" value="${esc(state.query)}"></label>`;
   const s = sectionState(["plants","last5"]); if (s) return head + s;
@@ -1212,10 +1219,10 @@ function viewLookup(){
       const latest = rows.find(r => r.retail != null);
       return `<section class="res"><div class="res-h"><h3>${esc(rows[0].name)} <span class="psize" style="display:inline">${esc(rows[0].size)}</span></h3>
         <span class="sum">Last sold at <b>${latest ? money(latest.retail) : "–"}</b> · best cost <b>${best != null ? money(best) : "–"}</b></span></div>
-        <div class="tablewrap"><table><thead><tr><th>Week</th><th>Supplier</th><th class="r">Cost</th><th class="r">Retail</th><th class="r">Markup</th></tr></thead><tbody>
+        <div class="tablewrap"><table><thead><tr><th>Week</th><th>Supplier</th><th class="r">Cost</th><th class="r">Retail</th><th class="r hide-sm">Markup</th></tr></thead><tbody>
         ${rows.map(r => `<tr><td class="num">${esc(r.week)}</td><td>${esc(r.supplier)}${r.cost != null && r.cost === best && costs.length > 1 ? `<span class="best">cheapest</span>` : ""}</td>
           <td class="r num">${money(r.cost) || "–"}</td><td class="r">${r.retail != null ? `<span class="price">${money(r.retail)}</span>` : `<span class="mut">–</span>`}</td>
-          <td class="r num">${r.cost && r.retail ? Math.round(r.retail / r.cost * 100) + "%" : "–"}</td></tr>`).join("")}
+          <td class="r num hide-sm">${r.cost && r.retail ? Math.round(r.retail / r.cost * 100) + "%" : "–"}</td></tr>`).join("")}
         </tbody></table></div></section>`; }).join("");
 }
 
