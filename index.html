@@ -119,13 +119,15 @@ button{font:inherit;color:inherit}
 .lines{display:flex;flex-direction:column}
 .line{border-bottom:1px solid var(--line)}
 .line:last-child{border-bottom:0}
-.l-main{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:minmax(0,1fr) 44px 72px 84px 112px;gap:10px;align-items:center;padding:12px 16px;cursor:pointer}
-.linespanel,.sup-head{max-width:760px}
+.l-main{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:minmax(0,1fr) 48px 72px 84px 112px;gap:16px;align-items:center;padding:16px 20px;cursor:pointer}
+.linespanel,.sup-head{max-width:820px}
 .line:nth-child(even) .l-main{background:var(--sunk)}
 .l-main:hover{background:var(--leaf-soft)}
 .l-main:focus-visible{outline:2px solid var(--leaf);outline-offset:-2px}
 .line.open .l-main{background:var(--leaf-soft)}
-.l-name{display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:10px;row-gap:4px;min-width:0}
+.l-name{display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:16px;row-gap:6px;min-width:0}
+.l-head{display:grid;grid-template-columns:minmax(0,1fr) 48px 72px 84px 112px;gap:16px;padding:10px 20px;font-size:13px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--line)}
+.l-head .r{text-align:right}
 .l-name b{font-weight:700}
 .l-name .psize{display:inline;margin:0;font-size:15px;color:var(--muted);white-space:nowrap}
 .l-name .forcust{margin-top:0}
@@ -145,7 +147,7 @@ button{font:inherit;color:inherit}
 .l-more dd{margin:2px 0 0;font-size:15px}
 .line.editing{padding:12px 16px;background:var(--leaf-soft);display:grid;gap:10px}
 .line.editing .l-main{padding:0;cursor:default}
-@media (max-width:700px){.l-main{grid-template-columns:minmax(0,1fr) 44px 80px;row-gap:6px}.l-cost{display:none}.l-flag{grid-column:1/-1;text-align:left}}
+@media (max-width:700px){.l-main{grid-template-columns:minmax(0,1fr) 44px 80px;row-gap:6px;padding:14px 16px}.l-head{grid-template-columns:minmax(0,1fr) 44px 80px;padding:10px 16px}.l-head span:last-child{display:none}.l-cost,.l-hcost{display:none}.l-flag{grid-column:1/-1;text-align:left}}
 .rail-foot{margin-top:auto;font-size:14px;color:var(--faint);display:flex;flex-direction:column;gap:8px}
 .rail-foot a{color:var(--muted)}
 .linkbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink)}
@@ -810,7 +812,7 @@ function lineFlag(r){
 }
 function linesTable(rows, editable){
   const can = editable && state.conn === "ready";
-  return `<div class="lines">${rows.map(r => {
+  return `<div class="lines"><div class="l-head" aria-hidden="true"><span>Plant</span><span class="r">Qty</span><span class="r l-hcost">Cost</span><span class="r">Retail</span><span></span></div>${rows.map(r => {
     const busy = !!state.busy["l" + r.row];
     if (editable && state.editing === r.row){
       return `<div class="line open editing"><div class="l-main"><div class="l-name"><b>${esc(r.name)}</b><span class="psize">${esc(r.size)}</span></div></div>
@@ -826,8 +828,8 @@ function linesTable(rows, editable){
     return `<div class="line${open ? " open" : ""}">
       <button class="l-main" type="button" data-open="${r.row}" aria-expanded="${open}">
         <span class="l-name"><b>${esc(r.name)}</b><span class="psize">${esc(r.size)}</span>${r.comments ? `<span class="forcust">${esc(r.comments)}</span>` : ""}</span>
-        <span class="l-qty"><small>Qty</small>${r.qty ? Math.round(r.qty * 100) / 100 : 0}</span>
-        <span class="l-cost"><small>Cost</small>${money(r.cost) || "–"}</span>
+        <span class="l-qty">${r.qty ? Math.round(r.qty * 100) / 100 : 0}</span>
+        <span class="l-cost">${money(r.cost) || "–"}</span>
         <span class="l-ret">${r.retail != null ? `<span class="price${r.isNewPrice ? " new" : ""}">${money(r.retail)}</span>` : `<span class="mut">–</span>`}</span>
         <span class="l-flag">${lineFlag(r)}</span>
       </button>
