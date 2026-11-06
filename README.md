@@ -8,7 +8,7 @@ The **Marked Invoices Google Sheet is the back end**. The page reads it and save
 - **Previous weeks**: any W tab, laid out the same way.
 - **Orders**: the Orders tab by supplier. Tick orders off or add a new one under a supplier.
 - **Price look up**: search this week and the last 5 weeks for what you paid and what you sold it for.
-- **Stickers**: the [stickers app](https://blakeplantshack-prog.github.io/plant-shack-stickers/) inside the dashboard. **Add all to print list** (or one supplier) puts the To Print tab's stickers on its print list, matched to the PLANT $ prices in the till. Prices that aren't in the till are listed so you can add them in the POS first. Zebra Browser Print still needs to be running on that computer.
+- **Stickers**: price stickers printed from the dashboard, using the [stickers app](https://blakeplantshack-prog.github.io/plant-shack-stickers/)'s price list, sticker design, print list and printer choice (shared on each computer). **Add all to print list** (or one supplier) puts the To Print tab's stickers on its print list, matched to the PLANT $ prices in the till. Prices that aren't in the till are listed so you can add them in the POS first. Zebra Browser Print still needs to be running on that computer.
 
 Before every save the page re-reads that row of the sheet. If the row has moved (someone added or deleted rows), it saves nothing and reloads.
 

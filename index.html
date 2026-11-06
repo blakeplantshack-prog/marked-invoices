@@ -54,8 +54,38 @@ button{font:inherit;color:inherit}
 .nav button[aria-current="page"]{background:var(--leaf-soft);color:var(--ink)}
 .nav svg{width:18px;height:18px;flex:none}
 .nav .count{margin-left:auto;font-family:var(--f-mono);font-size:14px;color:var(--faint)}
-#stickerHost{margin-top:4px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:#fff}
-#stickerHost iframe{display:block;width:100%;height:calc(100vh - 230px);min-height:620px;border:0}
+/* the stickers app runs out of sight; this page only borrows its price list and sticker drawing */
+#stickerHost{position:absolute;left:-10000px;top:0;width:420px;height:300px;overflow:hidden;visibility:hidden}
+#stickerHost iframe{width:420px;height:300px;border:0}
+.sk{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start}
+.sk-side{position:sticky;top:16px;display:grid;gap:16px}
+.sk-side .panel{margin-bottom:0}
+.seg.kinds{margin-bottom:12px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.tile{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 6px;text-align:center;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile:hover{border-color:var(--leaf)}
+.tile b{font-size:18px;font-weight:700}
+.tile small{font-size:12px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile[aria-pressed="true"]{background:var(--leaf);border-color:var(--leaf);color:var(--leaf-ink)}
+.tile[aria-pressed="true"] small{color:var(--leaf-ink);opacity:.8}
+.tile .nm{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preview{background:var(--sunk);border-radius:8px;padding:14px;display:grid;place-items:center}
+.preview img{width:100%;max-width:300px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15);border-radius:2px}
+.qtyrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 16px}
+.qtyrow .q{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.qtyrow .q button{border:0;background:var(--sunk);width:36px;font-size:18px;cursor:pointer;color:var(--ink)}
+.qtyrow .q input{width:56px;border:0;text-align:center;font:inherit;font-size:16px;background:var(--surface);color:var(--ink)}
+.plist{list-style:none;margin:0;padding:4px 0}
+.plist li{display:grid;grid-template-columns:minmax(0,1fr) 64px 28px;gap:8px;align-items:center;padding:6px 16px}
+.plist input{width:100%;font:inherit;font-size:15px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;text-align:right;background:var(--surface);color:var(--ink)}
+.plist .x{border:0;background:none;font-size:18px;color:var(--muted);cursor:pointer}
+.pstat{display:flex;gap:8px;align-items:center;font-weight:700;font-size:15px}
+.pstat::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--faint)}
+.pstat.ok::before{background:var(--ok)}
+.pstat.bad::before{background:var(--up)}
+.pbox{padding:12px 16px;display:grid;gap:8px;font-size:14px;color:var(--muted)}
+.pbox select{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface);color:var(--ink);width:100%}
+@media (max-width:1100px){.sk{grid-template-columns:minmax(0,1fr)}.sk-side{position:static}}
 .sendbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px 16px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);margin-bottom:12px}
 .sendbar p{margin:0;font-size:14px;color:var(--muted)}
 .sendbar p b{color:var(--ink)}
@@ -264,7 +294,7 @@ button.tick.on{background:var(--leaf)}
       <a href="https://docs.google.com/spreadsheets/d/1SaFxcnz1dGpqPDu3fDAdQWGsB9XP22L7A605PcFx6YM/edit" target="_blank" rel="noopener">Open the sheet ↗</a>
     </div>
   </aside>
-  <main id="main"><div id="view" aria-live="polite"></div><div id="stickerHost" hidden></div></main>
+  <main id="main"><div id="view" aria-live="polite"></div><div id="stickerHost" aria-hidden="true"></div></main>
 </div>
 
 <script>
@@ -788,7 +818,7 @@ function ensureStickerFrame(reload){
   let f = host.querySelector("iframe");
   if (!f){
     f = document.createElement("iframe");
-    f.title = "Plant Shack Stickers";
+    f.title = "Plant Shack Stickers (background)"; f.tabIndex = -1;
     f.setAttribute("allow", "local-network-access; local-network; loopback-network");
     host.appendChild(f);
     reload = true;
@@ -819,7 +849,7 @@ function toZPL(c, qty){
   const n = bpr * H; return `^XA^PW${W}^LL${H}^LH0,0^FO0,0^GFA,${n},${n},${bpr},${hex}^FS^PQ${qty},0,1,Y^XZ\n`;
 }
 let zebraBusy = false;
-async function zebraPrint(f, jobs){
+async function zebraPrint(f, jobs){ f = f || await ensureStickerFrame();
   const total = jobs.reduce((a, j) => a + j.qty, 0); if (!total || zebraBusy) return;
   zebraBusy = true;
   try {
@@ -828,6 +858,7 @@ async function zebraPrint(f, jobs){
     catch (e){ throw new Error("Can't reach Zebra Browser Print. Check it's running (icon near the clock), and if Chrome asks to let this page reach devices on this computer, choose Allow. " + e.message); }
     let saved = null; try { saved = JSON.parse(localStorage.getItem("printerName") || "null"); } catch {}
     const dev = list.find(p => p.name === saved) || (list.length === 1 ? list[0] : null);
+    sk.printers = list; sk.printer = dev ? dev.name : null;
     if (!dev) throw new Error("Choose the sticker printer in the Printer box first.");
     const S = f.contentWindow.__sticker;
     // send in batches of up to 300 stickers
@@ -883,29 +914,104 @@ async function sendToPrintList(supplier){
       stickers += r.qty; prices++;
     }
     localStorage.setItem("queue", JSON.stringify(queue));
-    await ensureStickerFrame(true);
     if (state.view !== "stickers") go("stickers");
     const miss = [...new Set(missing)];
     toast(stickers ? `Added ${stickers} stickers to the print list` + (miss.length ? `. Not in the till: ${miss.join(", ")}` : "") : `None of those prices are PLANT $ items in the till: ${miss.join(", ")}`, miss.length > 0);
   } catch (e){ toast(e.message || "Couldn't reach the stickers app.", true); }
   finally { delete state.busy.send; render(); }
 }
+/* ---------- stickers screen (native) ---------- */
+const sk = { kind: "plant", q: "", sel: null, qty: 1, items: null, printers: [], printer: null, pstat: "", pdetail: "", previews: {}, started: false, loading: false };
+const priceText = p => "$" + (Math.round(p * 100) % 100 === 0 ? String(Math.round(p)) : p.toFixed(2));
+const skQueue = () => { try { return JSON.parse(localStorage.getItem("queue") || "[]") || []; } catch { return []; } };
+const skSaveQueue = q => { try { localStorage.setItem("queue", JSON.stringify(q)); } catch {} };
+const skItem = b => (sk.items || []).find(x => x.b === b);
+const skWord = it => it.kind === "plant" ? "Plant" : it.kind === "pot" ? "Pot" : it.kind ? it.kind[0].toUpperCase() + it.kind.slice(1) : it.d;
+async function startStickers(){
+  if (sk.started) return; sk.started = true; sk.loading = true;
+  try {
+    const f = await ensureStickerFrame();
+    let S = null; for (let i = 0; i < 60 && !(S && S.items().length); i++){ try { S = f.contentWindow.__sticker; } catch {} if (!(S && S.items().length)) await new Promise(r => setTimeout(r, 100)); }
+    if (!S) throw new Error("no app");
+    try { await f.contentDocument.fonts.ready; } catch {}
+    sk.items = S.items();
+    const near = sk.items.filter(x => x.kind === "plant").find(x => Math.abs(x.p - 14.95) < 0.001);
+    if (!sk.sel && near) sk.sel = near.b;
+  } catch { sk.items = []; sk.failed = true; }
+  sk.loading = false; render(); skFindPrinter();
+}
+async function skFindPrinter(){
+  sk.pstat = ""; sk.pdetail = "Looking for the Zebra printer…"; render();
+  try {
+    const r = await bpFetch("/available"); sk.printers = ((await r.json()).printer || []).filter(p => p && p.name);
+    let saved = null; try { saved = JSON.parse(localStorage.getItem("printerName") || "null"); } catch {}
+    const dev = sk.printers.find(p => p.name === saved) || (sk.printers.length === 1 ? sk.printers[0] : null);
+    sk.printer = dev ? dev.name : null;
+    if (!sk.printers.length){ sk.pstat = "bad"; sk.pdetail = "Browser Print is running but can't see any printers. Check the Zebra is on."; }
+    else if (!dev){ sk.pstat = "bad"; sk.pdetail = "Pick the sticker printer below. This computer will remember it."; }
+    else { sk.pstat = "ok"; sk.pdetail = "Checked " + new Date().toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" }); }
+  } catch {
+    sk.printers = []; sk.printer = null; sk.pstat = "bad";
+    sk.pdetail = "Can't reach Zebra Browser Print. Check it's running (icon near the clock). If Chrome asks to let this page reach devices on this computer, choose Allow.";
+  }
+  render();
+}
+function skPreview(it){
+  if (sk.previews[it.b]) return sk.previews[it.b];
+  try { const f = $("#stickerHost iframe"); sk.previews[it.b] = f.contentWindow.__sticker.drawArt(it, 2).toDataURL(); } catch { return ""; }
+  return sk.previews[it.b];
+}
 function viewStickers(){
   const head = `<div class="page-head"><div><div class="eyebrow">Stickers</div><h2 class="title">Print price stickers</h2>
-    <p class="sub">The Plant Shack stickers app, right here. Send the To Print tab to its print list, then press Print list.</p></div></div>`;
+    <p class="sub">Pick a price and print, or send this week's stickers from the To Print tab to the print list.</p></div></div>`;
   if (!sameOriginStickers()) return head + `<div class="state"><h3>Stickers open in their own window here</h3><p>The stickers app only fits inside the dashboard on the GitHub version, because that's where the Zebra printer is set up.</p>
     <a class="linkbtn" style="display:inline-block;margin-top:14px;text-decoration:none" href="${STICKERS_URL}" target="_blank" rel="noopener">Open the stickers app ↗</a></div>`;
   const tp = state.toPrint || [];
   const sups = [...new Set(tp.filter(r => r.qty > 0).map(r => r.supplier))];
   const total = tp.reduce((a, r) => a + r.qty, 0);
-  const bar = state.conn !== "ready" ? `<div class="sendbar"><p>Sign in on This week to send the To Print tab here. You can still print by hand below.</p></div>`
-    : !state.toPrint ? `<div class="sendbar"><p>Reading the To Print tab…</p></div>`
+  const bar = state.conn !== "ready" ? ""
+    : !state.toPrint ? ""
     : `<div class="sendbar"><p><b>${total}</b> stickers on the To Print tab across <b>${sups.length}</b> suppliers.</p>
       <div class="btns">${sendButton("__all", "Add all to print list")}
       <select id="sendSup" aria-label="Supplier"><option value="">Pick stickers by supplier…</option>${sups.map(s => `<option ${state.stickSup === s ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>
-      <a class="linkbtn" style="text-decoration:none" href="${STICKERS_URL}" target="_blank" rel="noopener" title="The print list carries over">Print in its own tab ↗</a></div></div>`;
+</div></div>`;
   const picker = state.conn === "ready" && state.toPrint && state.stickSup ? `<div class="panel"><div class="panel-h"><h3>${esc(state.stickSup)}</h3><p>Tick the ones you want and change how many</p></div>${stickerPicker(state.stickSup)}</div>` : "";
-  return head + bar + picker;
+  if (!sk.items) return head + bar + picker + loadingBlock();
+  if (sk.failed) return head + bar + picker + `<div class="state"><h3>Couldn't load the price list</h3><p>The stickers app didn't start. Reload the page to try again.</p></div>`;
+  // left: pick a price
+  const q = sk.q.trim().toLowerCase().replace(/\$/g, "");
+  let list = sk.items.filter(it => sk.kind === "all" || it.kind === sk.kind);
+  const bc = q && sk.items.find(it => it.b.toLowerCase() === q);
+  if (bc) list = [bc];
+  else if (q){
+    const words = q.split(/\s+/);
+    list = list.filter(it => words.every(w => /^\d*\.?\d+$/.test(w) ? (priceText(it.p).slice(1).startsWith(w) || it.p.toFixed(2).startsWith(w)) : (" " + (it.kind || it.d.toLowerCase())).includes(w) || it.d.toLowerCase().includes(w)));
+  }
+  const more = list.length > 240; list = list.slice(0, 240);
+  const tiles = list.length ? `<div class="tiles">${list.map(it => `<button class="tile" type="button" data-skp="${esc(it.b)}" aria-pressed="${sk.sel === it.b}" title="${esc(it.d)}"><b>${priceText(it.p)}</b>${sk.kind === "all" && !it.kind ? `<span class="nm">${esc(it.d)}</span>` : sk.kind === "all" ? `<span class="nm">${esc(skWord(it))}</span>` : ""}<small>${esc(it.b)}</small></button>`).join("")}</div>${more ? `<p class="hint" style="margin-top:12px">Showing the first 240. Type to find the rest.</p>` : ""}`
+    : `<p class="hint">Nothing matches “${esc(sk.q)}”. If a price isn't in the till, add it in the POS first.</p>`;
+  const left = `<div><div class="seg kinds" role="group" aria-label="Sticker type">${[["plant","Plants"],["pot","Pots"],["all","Everything"]].map(([k, l]) => `<button type="button" data-skk="${k}" aria-pressed="${sk.kind === k}">${l}</button>`).join("")}</div>
+    <label class="search" for="skq" style="max-width:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+    <input id="skq" type="search" autocomplete="off" placeholder="${sk.kind === "all" ? "Name, price or barcode" : "Type a price, e.g. 14.95"}" value="${esc(sk.q)}"></label>
+    <div style="margin-top:12px">${tiles}</div></div>`;
+  // right: preview, print list, printer
+  const it = sk.sel && skItem(sk.sel);
+  const queue = skQueue().map(x => ({ it: skItem(x.b), qty: x.qty })).filter(x => x.it);
+  const qn = queue.reduce((a, x) => a + x.qty, 0);
+  const side = `<div class="sk-side">
+    <div class="panel"><div class="panel-h"><h3>${it ? esc(skWord(it)) + " " + priceText(it.p) : "Pick a price"}</h3></div>
+      ${it ? `<div class="preview" style="margin:14px 16px 0"><img src="${skPreview(it)}" alt="Sticker for ${esc(skWord(it))} ${priceText(it.p)}"></div>
+      <div class="qtyrow"><span class="q"><button type="button" data-skqty="-1" aria-label="One less">−</button><input id="skqty" type="number" min="1" max="999" value="${sk.qty}" aria-label="How many"><button type="button" data-skqty="1" aria-label="One more">+</button></span>
+        <button class="btn" type="button" data-act="sk-print">Print now</button><button class="linkbtn" type="button" data-act="sk-add">Add to print list</button></div>` : `<p class="hint" style="padding:12px 16px;margin:0">Pick a price on the left.</p>`}</div>
+    <div class="panel"><div class="panel-h"><h3>Print list</h3><p>${queue.length ? `${qn} sticker${qn === 1 ? "" : "s"}` : ""}</p></div>
+      ${queue.length ? `<ul class="plist">${queue.map(x => `<li><span>${esc(skWord(x.it))} ${priceText(x.it.p)}</span><input type="number" min="1" max="999" value="${x.qty}" data-skql="${esc(x.it.b)}" id="skql-${esc(x.it.b)}" aria-label="How many ${priceText(x.it.p)}"><button class="x" type="button" data-skrm="${esc(x.it.b)}" aria-label="Remove ${priceText(x.it.p)}">×</button></li>`).join("")}</ul>
+        <div class="qtyrow" style="padding-top:4px"><button class="btn" type="button" data-act="sk-printlist">Print list</button><button class="linkbtn" type="button" data-act="sk-clear">Clear</button></div>`
+        : `<p class="hint" style="padding:12px 16px;margin:0">Empty. Use Add to print list, or send stickers from the To Print tab above.</p>`}</div>
+    <div class="panel"><div class="panel-h"><h3>Printer</h3><button class="mini" type="button" data-act="sk-check">Check again</button></div>
+      <div class="pbox"><span class="pstat ${sk.pstat}">${sk.printer ? "Ready: " + esc(sk.printer) : sk.pstat === "bad" ? "Not ready" : "Checking…"}</span><span>${esc(sk.pdetail)}</span>
+      ${sk.printers.length ? `<select id="skprinter" aria-label="Sticker printer"><option value="">Choose a printer…</option>${sk.printers.map(p => `<option ${p.name === sk.printer ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select>` : ""}</div></div>
+  </div>`;
+  return head + bar + picker + `<div class="sk">${left}${side}</div>`;
 }
 
 /* ---------- views ---------- */
@@ -921,7 +1027,7 @@ function viewWeek(){
   if (state.supplier === "__all"){
     const t = totals(state.plants);
     const stick = (state.toPrint || []).reduce((a, r) => a + r.qty, 0);
-    return head + tabs + statsBlock(t) + `<div class="pills" style="margin:0 0 16px">${flagPills(t)}${stick ? pill(["same", `${stick} stickers to print`]) : ""}</div>` + overview(groups, "data-sup");
+    return head + tabs + overview(groups, "data-sup");
   }
   return head + tabs + supplierDetail(state.supplier, groups.get(state.supplier), true);
 }
@@ -1018,10 +1124,9 @@ function render(){
   const drafts = {}; document.querySelectorAll("#view input").forEach(i => { if (i.id) drafts[i.id] = i.value; });
   const banner = state.expired && api.mode === "google" ? `<div class="sendbar" role="status"><p><b>Google needs a quick reconnect.</b> Everything below is from ${state.readAt ? new Date(state.readAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" }) : "earlier"}. Saving is paused until you reconnect.</p><button class="btn" data-act="signin" type="button">Reconnect</button></div>` : "";
   $("#view").innerHTML = banner + ({ week: viewWeek, prev: viewPrev, orders: viewOrders, lookup: viewLookup, stickers: viewStickers }[state.view])();
-  const host = $("#stickerHost"); const showFrame = state.view === "stickers" && sameOriginStickers();
-  host.hidden = !showFrame; if (showFrame) ensureStickerFrame();
+  if (state.view === "stickers" && sameOriginStickers()) startStickers();
   $("#c-stickers").textContent = state.toPrint ? (state.toPrint.reduce((a, r) => a + r.qty, 0) || "") : "";
-  Object.entries(drafts).forEach(([id, v]) => { const i = document.getElementById(id); if (i && id !== "q" && id !== "supq") i.value = v; });
+  Object.entries(drafts).forEach(([id, v]) => { const i = document.getElementById(id); if (i && id !== "q" && id !== "supq" && id !== "skq" && id !== "skqty" && !id.startsWith("skql-")) i.value = v; });
   if (fid){ const i = document.getElementById(fid); if (i){ i.focus(); try { if (sel != null) i.setSelectionRange(sel, sel); } catch {} } }
 }
 function go(view){
@@ -1042,6 +1147,15 @@ document.addEventListener("click", e => {
   if (t.dataset.q){ state.query = t.dataset.q; render(); const q = $("#q"); q && q.focus(); return; }
   if (t.dataset.tick) return toggleOrder(+t.dataset.tick);
   if (t.dataset.send) return sendToPrintList(t.dataset.send);
+  if (t.dataset.skp){ sk.sel = t.dataset.skp; sk.qty = 1; render(); return; }
+  if (t.dataset.skk){ sk.kind = t.dataset.skk; sk.q = ""; render(); return; }
+  if (t.dataset.skqty){ sk.qty = Math.max(1, Math.min(999, sk.qty + +t.dataset.skqty)); render(); return; }
+  if (t.dataset.skrm){ skSaveQueue(skQueue().filter(x => x.b !== t.dataset.skrm)); render(); return; }
+  if (t.dataset.act === "sk-add"){ const q = skQueue(); const ex = q.find(x => x.b === sk.sel); if (ex) ex.qty += sk.qty; else q.push({ b: sk.sel, qty: sk.qty }); skSaveQueue(q); toast("Added to print list"); render(); return; }
+  if (t.dataset.act === "sk-print"){ const it = skItem(sk.sel); if (it) zebraPrint(null, [{ it, qty: sk.qty }]).then(render); return; }
+  if (t.dataset.act === "sk-printlist"){ const jobs = skQueue().map(x => ({ it: skItem(x.b), qty: x.qty })).filter(j => j.it); zebraPrint(null, jobs).then(render); return; }
+  if (t.dataset.act === "sk-clear"){ skSaveQueue([]); render(); return; }
+  if (t.dataset.act === "sk-check") return skFindPrinter();
   if (t.dataset.pickall || t.dataset.picknone || t.dataset.pickreset){
     const sup = (t.dataset.pickall || t.dataset.picknone || t.dataset.pickreset).toLowerCase();
     (state.toPrint || []).filter(r => r.supplier.toLowerCase() === sup).forEach(r => { const pk = pickOf(r);
@@ -1068,11 +1182,16 @@ document.addEventListener("submit", e => {
   if (f.dataset.line) return saveLine(+f.dataset.line, f.elements);
   if (f.dataset.addform) return addOrder(f.dataset.addform, f.elements.what.value.trim(), f.elements.who.value.trim());
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && (state.editing || state.adding)){ state.editing = null; state.adding = null; render(); } });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "skqty"){ e.preventDefault(); const it = skItem(sk.sel); if (it) zebraPrint(null, [{ it, qty: sk.qty }]); return; } if (e.key === "Escape" && (state.editing || state.adding)){ state.editing = null; state.adding = null; render(); } });
 document.addEventListener("input", e => { if (e.target.dataset && e.target.dataset.pickq){ const k = e.target.dataset.pickq; const v = Math.max(0, Math.min(999, parseInt(e.target.value, 10) || 0)); state.pick[k] = { ...(state.pick[k] || {}), qty: v, on: v > 0 }; const lab = e.target.closest(".sticker"); lab.classList.toggle("off", !v); const cb = lab.querySelector("input[type=checkbox]"); if (cb) cb.checked = v > 0; updatePickbar(lab); return; }
+  if (e.target.id === "skq"){ sk.q = e.target.value; render(); return; }
+  if (e.target.id === "skqty"){ sk.qty = Math.max(1, Math.min(999, parseInt(e.target.value, 10) || 1)); return; }
+  if (e.target.dataset && e.target.dataset.skql){ const q = skQueue(); const x = q.find(y => y.b === e.target.dataset.skql); if (x){ x.qty = Math.max(1, Math.min(999, parseInt(e.target.value, 10) || 1)); skSaveQueue(q); } return; }
   if (e.target.id === "supq"){ state.supQ = e.target.value; render(); return; }
   if (e.target.id === "q"){ state.query = e.target.value; render(); } });
-document.addEventListener("change", e => { if (e.target.id === "sendSup"){ state.stickSup = e.target.value || null; render(); return; }
+document.addEventListener("change", e => { if (e.target.id === "skprinter"){ const n = e.target.value; try { localStorage.setItem("printerName", JSON.stringify(n || null)); } catch {} sk.printer = n || null; sk.pstat = n ? "ok" : "bad"; sk.pdetail = n ? "Saved on this computer." : "Pick the sticker printer."; render(); return; }
+  if (e.target.dataset && e.target.dataset.skql){ render(); return; }
+  if (e.target.id === "sendSup"){ state.stickSup = e.target.value || null; render(); return; }
   if (e.target.dataset.pick){ const k = e.target.dataset.pick; state.pick[k] = { ...(state.pick[k] || { qty: 0 }), on: e.target.checked }; if (e.target.checked && !state.pick[k].qty) state.pick[k].qty = 1; render(); return; }
   if (e.target.dataset.pickq) return; if (e.target.id === "older" && e.target.value){ state.prevTab = e.target.value; state.prevSupplier = "__all"; render(); loadPrev(); } });
 window.addEventListener("hashchange", () => { const v = location.hash.slice(1); if (VIEWS.includes(v) && v !== state.view) go(v); });
