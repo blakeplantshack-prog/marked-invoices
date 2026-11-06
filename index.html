@@ -741,6 +741,8 @@ async function sendToPrintList(supplier){
     await ensureStickerFrame(true);
     if (state.view !== "stickers") go("stickers");
     const miss = [...new Set(missing)];
+    const inList = queue.reduce((a, q) => a + q.qty, 0);
+    if (inList > 300){ toast(`The print list now has ${inList} stickers. The stickers app prints at most 300 at once, so print one supplier at a time (Clear the list first).`, true); return; }
     toast(stickers ? `Added ${stickers} stickers to the print list` + (miss.length ? `. Not in the till: ${miss.join(", ")}` : "") : `None of those prices are PLANT $ items in the till: ${miss.join(", ")}`, miss.length > 0);
   } catch (e){ toast(e.message || "Couldn't reach the stickers app.", true); }
   finally { delete state.busy.send; render(); }
@@ -755,7 +757,7 @@ function viewStickers(){
   const total = tp.reduce((a, r) => a + r.qty, 0);
   const bar = state.conn !== "ready" ? `<div class="sendbar"><p>Sign in on This week to send the To Print tab here. You can still print by hand below.</p></div>`
     : !state.toPrint ? `<div class="sendbar"><p>Reading the To Print tab…</p></div>`
-    : `<div class="sendbar"><p><b>${total}</b> stickers on the To Print tab across <b>${sups.length}</b> suppliers.</p>
+    : `<div class="sendbar"><p><b>${total}</b> stickers on the To Print tab across <b>${sups.length}</b> suppliers.${total > 300 ? " That's over the 300-at-once limit, so send one supplier at a time." : ""}</p>
       <div class="btns">${sendButton("__all", "Add all to print list")}
       <select id="sendSup" aria-label="Supplier"><option value="">One supplier…</option>${sups.map(s => `<option>${esc(s)}</option>`).join("")}</select>
       <a class="linkbtn" style="text-decoration:none" href="${STICKERS_URL}" target="_blank" rel="noopener" title="The print list carries over">Print in its own tab ↗</a></div></div>`;
