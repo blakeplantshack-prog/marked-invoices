@@ -713,10 +713,74 @@ function ensureStickerFrame(reload){
     reload = true;
   }
   if (reload){
-    frameReady = new Promise(ok => { f.addEventListener("load", () => ok(f), { once: true }); });
+    frameReady = new Promise(ok => { f.addEventListener("load", () => { hookFrame(f); ok(f); }, { once: true }); });
     f.src = "/plant-shack-stickers/?embed=" + Date.now();
   }
   return frameReady;
+}
+/* Printing goes from this page, not from inside the frame: Chrome can block the
+   printer connection for a page shown inside another page. */
+const BP = ["http://127.0.0.1:9100", "https://127.0.0.1:9101"]; let bpBase = null;
+async function bpFetch(path, opts, ms){
+  const errs = [];
+  for (const base of bpBase ? [bpBase] : BP){
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 4000);
+    try {
+      const r = await fetch(base + path, Object.assign({ headers: { "Content-Type": "text/plain;charset=UTF-8" }, signal: ctl.signal }, opts));
+      clearTimeout(t); if (r.ok){ bpBase = base; return r; } errs.push(base + " answered " + r.status);
+    } catch (e){ clearTimeout(t); errs.push(base + (e.name === "AbortError" ? " didn't answer" : " blocked or not running")); }
+  }
+  bpBase = null; throw new Error(errs.join(" · "));
+}
+function toZPL(c, qty){
+  const W = c.width, H = c.height, d = c.getContext("2d").getImageData(0, 0, W, H).data, bpr = W / 8; let hex = "";
+  for (let y = 0; y < H; y++) for (let b = 0; b < bpr; b++){ let v = 0; for (let k = 0; k < 8; k++){ if (d[((y * W) + b * 8 + k) * 4] < 128) v |= 128 >> k; } hex += (v < 16 ? "0" : "") + v.toString(16).toUpperCase(); }
+  const n = bpr * H; return `^XA^PW${W}^LL${H}^LH0,0^FO0,0^GFA,${n},${n},${bpr},${hex}^FS^PQ${qty},0,1,Y^XZ\n`;
+}
+let zebraBusy = false;
+async function zebraPrint(f, jobs){
+  const total = jobs.reduce((a, j) => a + j.qty, 0); if (!total || zebraBusy) return;
+  zebraBusy = true;
+  try {
+    let list = [];
+    try { const r = await bpFetch("/available"); list = ((await r.json()).printer || []).filter(p => p && p.name); }
+    catch (e){ throw new Error("Can't reach Zebra Browser Print. Check it's running (icon near the clock), and if Chrome asks to let this page reach devices on this computer, choose Allow. " + e.message); }
+    let saved = null; try { saved = JSON.parse(localStorage.getItem("printerName") || "null"); } catch {}
+    const dev = list.find(p => p.name === saved) || (list.length === 1 ? list[0] : null);
+    if (!dev) throw new Error("Choose the sticker printer in the Printer box first.");
+    const S = f.contentWindow.__sticker;
+    // send in batches of up to 300 stickers
+    let batch = [], n = 0, sent = 0;
+    const flush = async () => { if (!batch.length) return; await bpFetch("/write", { method: "POST", body: JSON.stringify({ device: dev, data: batch.join("") }) }, 20000); sent += n; batch = []; n = 0; };
+    for (const j of jobs){
+      let left = j.qty; const art = S.drawSticker(j.it);
+      while (left > 0){ const q = Math.min(left, 300 - n); batch.push(toZPL(art, q)); n += q; left -= q; if (n >= 300) await flush(); }
+    }
+    await flush();
+    toast(`Printing ${sent} sticker${sent > 1 ? "s" : ""} on ${dev.name}`);
+  } catch (e){ toast(e.message || "Couldn't print.", true); }
+  finally { zebraBusy = false; }
+}
+function hookFrame(f){
+  let doc; try { doc = f.contentDocument; } catch { return; }
+  if (!doc || doc.__miHooked) return; doc.__miHooked = true;
+  doc.addEventListener("click", e => {
+    const b = e.target.closest && e.target.closest("#printQueue, #printNow"); if (!b) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const items = (f.contentWindow.__sticker && f.contentWindow.__sticker.items()) || [];
+    const byCode = c => items.find(x => x.b === c);
+    let jobs = [];
+    if (b.id === "printQueue"){
+      let q = []; try { q = JSON.parse(localStorage.getItem("queue") || "[]") || []; } catch {}
+      jobs = q.map(x => ({ it: byCode(x.b), qty: x.qty })).filter(j => j.it && j.qty > 0);
+    } else {
+      const code = (doc.querySelector("#results li.sel .m") || {}).textContent;
+      const qty = Math.max(1, parseInt((doc.querySelector("#qty") || {}).value, 10) || 1);
+      const it = code && byCode(code.trim()); if (it) jobs = [{ it, qty }];
+    }
+    if (!jobs.length){ toast("Nothing to print yet.", true); return; }
+    zebraPrint(f, jobs);
+  }, true);
 }
 async function sendToPrintList(supplier){
   if (!sameOriginStickers() || state.busy.send) return;
@@ -741,8 +805,6 @@ async function sendToPrintList(supplier){
     await ensureStickerFrame(true);
     if (state.view !== "stickers") go("stickers");
     const miss = [...new Set(missing)];
-    const inList = queue.reduce((a, q) => a + q.qty, 0);
-    if (inList > 300){ toast(`The print list now has ${inList} stickers. The stickers app prints at most 300 at once, so print one supplier at a time (Clear the list first).`, true); return; }
     toast(stickers ? `Added ${stickers} stickers to the print list` + (miss.length ? `. Not in the till: ${miss.join(", ")}` : "") : `None of those prices are PLANT $ items in the till: ${miss.join(", ")}`, miss.length > 0);
   } catch (e){ toast(e.message || "Couldn't reach the stickers app.", true); }
   finally { delete state.busy.send; render(); }
@@ -757,7 +819,7 @@ function viewStickers(){
   const total = tp.reduce((a, r) => a + r.qty, 0);
   const bar = state.conn !== "ready" ? `<div class="sendbar"><p>Sign in on This week to send the To Print tab here. You can still print by hand below.</p></div>`
     : !state.toPrint ? `<div class="sendbar"><p>Reading the To Print tab…</p></div>`
-    : `<div class="sendbar"><p><b>${total}</b> stickers on the To Print tab across <b>${sups.length}</b> suppliers.${total > 300 ? " That's over the 300-at-once limit, so send one supplier at a time." : ""}</p>
+    : `<div class="sendbar"><p><b>${total}</b> stickers on the To Print tab across <b>${sups.length}</b> suppliers.</p>
       <div class="btns">${sendButton("__all", "Add all to print list")}
       <select id="sendSup" aria-label="Supplier"><option value="">One supplier…</option>${sups.map(s => `<option>${esc(s)}</option>`).join("")}</select>
       <a class="linkbtn" style="text-decoration:none" href="${STICKERS_URL}" target="_blank" rel="noopener" title="The print list carries over">Print in its own tab ↗</a></div></div>`;
