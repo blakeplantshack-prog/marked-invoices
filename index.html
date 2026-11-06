@@ -733,9 +733,25 @@ function stickersBlock(supplier){
 }
 function supplierDetail(name, rows, editable){
   const t = totals(rows);
+  const q = (state.supQ || "").trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean);
+  const match = r => words.every(w => (r.plant + " " + (r.comments || "") + " " + (r.notes || "")).toLowerCase().includes(w));
+  const shown = words.length ? rows.filter(match) : rows;
+  const searchBox = `<label class="search" for="supq" style="margin-bottom:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+    <input id="supq" type="search" autocomplete="off" placeholder="Search ${esc(short(name))}'s plants, e.g. “grevillea” or “200 mm”" value="${esc(state.supQ || "")}"></label>`;
+  let past = "";
+  if (words.length && state.last5){
+    const hist = state.last5.filter(r => r.supplier.toLowerCase() === name.toLowerCase() && words.every(w => r.plant.toLowerCase().includes(w)))
+      .sort((a, b) => (parseInt(b.week.replace(/\D/g, ""), 10) || 0) - (parseInt(a.week.replace(/\D/g, ""), 10) || 0));
+    past = `<div class="panel"><div class="panel-h"><h3>From ${esc(name)} in the last 5 weeks</h3><p>${hist.length} line${hist.length === 1 ? "" : "s"}</p></div>
+      ${hist.length ? `<div class="tablewrap"><table><thead><tr><th>Week</th><th>Plant</th><th class="r">Cost</th><th class="r">Retail</th></tr></thead><tbody>
+      ${hist.slice(0, 60).map(r => `<tr><td class="num">${esc(r.week)}</td><td class="pname">${esc(r.name)}<span class="psize">${esc(r.size)}</span></td><td class="r num">${money(r.cost) || "–"}</td><td class="r">${r.retail != null ? `<span class="price">${money(r.retail)}</span>` : `<span class="mut">–</span>`}</td></tr>`).join("")}
+      </tbody></table></div>` : `<p class="hint" style="padding:12px 16px;margin:0">Nothing matching from this supplier in the last 5 weeks.</p>`}</div>`;
+  }
   return `${statsBlock(t)}<div class="pills" style="margin:0 0 16px">${flagPills(t)}</div>
     ${editable ? stickersBlock(name) : ""}
-    <div class="panel"><div class="panel-h"><h3>${esc(name)}</h3><p>Yellow tags are prices from the Not In System column</p></div>${linesTable(rows, editable)}</div>`;
+    ${searchBox}
+    <div class="panel"><div class="panel-h"><h3>${esc(name)}</h3><p>${words.length ? `${shown.length} of ${rows.length} lines match` : "Yellow tags are prices from the Not In System column"}</p></div>
+    ${shown.length ? linesTable(shown, editable) : `<p class="hint" style="padding:12px 16px;margin:0">Nothing on this week's invoice matches “${esc(state.supQ)}”.</p>`}</div>${past}`;
 }
 
 /* ---------- stickers app ---------- */
@@ -982,7 +998,7 @@ function render(){
   const host = $("#stickerHost"); const showFrame = state.view === "stickers" && sameOriginStickers();
   host.hidden = !showFrame; if (showFrame) ensureStickerFrame();
   $("#c-stickers").textContent = state.toPrint ? (state.toPrint.reduce((a, r) => a + r.qty, 0) || "") : "";
-  Object.entries(drafts).forEach(([id, v]) => { const i = document.getElementById(id); if (i && id !== "q") i.value = v; });
+  Object.entries(drafts).forEach(([id, v]) => { const i = document.getElementById(id); if (i && id !== "q" && id !== "supq") i.value = v; });
   if (fid){ const i = document.getElementById(fid); if (i){ i.focus(); try { if (sel != null) i.setSelectionRange(sel, sel); } catch {} } }
 }
 function go(view){
@@ -996,8 +1012,8 @@ function focusFirst(sel){ setTimeout(() => { const i = $(sel); i && i.focus(); }
 document.addEventListener("click", e => {
   const t = e.target.closest("button"); if (!t) return;
   if (t.dataset.view) return go(t.dataset.view);
-  if (t.dataset.sup != null){ state.supplier = t.dataset.sup; state.editing = null; render(); return; }
-  if (t.dataset.psup != null){ state.prevSupplier = t.dataset.psup; render(); return; }
+  if (t.dataset.sup != null){ state.supplier = t.dataset.sup; state.editing = null; state.supQ = ""; render(); return; }
+  if (t.dataset.psup != null){ state.prevSupplier = t.dataset.psup; state.supQ = ""; render(); return; }
   if (t.dataset.week){ state.prevTab = t.dataset.week; state.prevSupplier = "__all"; render(); loadPrev(); return; }
   if (t.dataset.bucket){ state.ordersBucket = t.dataset.bucket; state.adding = null; render(); return; }
   if (t.dataset.q){ state.query = t.dataset.q; render(); const q = $("#q"); q && q.focus(); return; }
@@ -1031,6 +1047,7 @@ document.addEventListener("submit", e => {
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && (state.editing || state.adding)){ state.editing = null; state.adding = null; render(); } });
 document.addEventListener("input", e => { if (e.target.dataset && e.target.dataset.pickq){ const k = e.target.dataset.pickq; const v = Math.max(0, Math.min(999, parseInt(e.target.value, 10) || 0)); state.pick[k] = { ...(state.pick[k] || {}), qty: v, on: v > 0 }; const lab = e.target.closest(".sticker"); lab.classList.toggle("off", !v); const cb = lab.querySelector("input[type=checkbox]"); if (cb) cb.checked = v > 0; updatePickbar(lab); return; }
+  if (e.target.id === "supq"){ state.supQ = e.target.value; render(); return; }
   if (e.target.id === "q"){ state.query = e.target.value; render(); } });
 document.addEventListener("change", e => { if (e.target.id === "sendSup"){ state.stickSup = e.target.value || null; render(); return; }
   if (e.target.dataset.pick){ const k = e.target.dataset.pick; state.pick[k] = { ...(state.pick[k] || { qty: 0 }), on: e.target.checked }; if (e.target.checked && !state.pick[k].qty) state.pick[k].qty = 1; render(); return; }
