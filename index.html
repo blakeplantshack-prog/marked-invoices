@@ -277,7 +277,7 @@ button.tick.on{background:var(--leaf)}
 const SHEET = "1SaFxcnz1dGpqPDu3fDAdQWGsB9XP22L7A605PcFx6YM";
 const GOOGLE_CLIENT_ID = "825964110505-29v98klalr65uvcp7e4pnecfkhg55se8.apps.googleusercontent.com"; // OAuth "Web application" client ID from Google Cloud. Needed only for the GitHub Pages version.
 const SERVER = "Google Sheets";
-const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+const SCOPE = "https://www.googleapis.com/auth/spreadsheets openid email";
 const REFRESH_MS = 5 * 60 * 1000;
 
 const $ = s => document.querySelector(s);
@@ -313,11 +313,11 @@ class SheetError extends Error { constructor(code, message){ super(message || co
 const api = { mode: null, mcp: null, token: null, tokenExp: 0, tokenClient: null };
 
 async function gfetch(path, opts = {}){
-  if (!api.token || Date.now() > api.tokenExp - 60_000){ state.conn = "signin"; render(); throw new SheetError("signin"); }
+  if (!api.token || Date.now() > api.tokenExp - 60_000){ tokenLapsed(); throw new SheetError("signin"); }
   const res = await fetch("https://sheets.googleapis.com/v4/spreadsheets/" + SHEET + path, {
     ...opts, headers: { "Authorization": "Bearer " + api.token, "Content-Type": "application/json" }
   });
-  if (res.status === 401){ api.token = null; store.del("mi.tok", true); state.conn = "signin"; render(); throw new SheetError("signin"); }
+  if (res.status === 401){ api.token = null; store.del("mi.tok"); tokenLapsed(); throw new SheetError("signin"); }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new SheetError(res.status === 403 ? "forbidden" : res.status === 404 ? "not_found" : "upstream_error", body.error && body.error.message);
   return body;
@@ -357,14 +357,31 @@ function loadGsi(){
     s.onload = ok; s.onerror = () => bad(new Error("gsi")); document.head.appendChild(s);
   });
 }
-function signIn(){
-  if (!api.tokenClient) return;
-  api.tokenClient.requestAccessToken({ prompt: store.get("mi.signedin") ? "" : "consent" });
+/* Google only hands a web page a one-hour pass. To avoid sign-outs, the pass is kept on this
+   computer, and renewed quietly (no typing) on the next click once it is close to running out.
+   If it does run out, the page keeps showing what it has and asks for one click to reconnect. */
+let renewing = false;
+function signIn(quiet){
+  if (!api.tokenClient || renewing) return;
+  renewing = true; setTimeout(() => { renewing = false; }, 15000);
+  const hint = store.get("mi.email") || undefined;
+  api.tokenClient.requestAccessToken({ prompt: store.get("mi.signedin") ? "" : "consent", login_hint: hint, hint });
+}
+function tokenLapsed(){
+  const hasData = state.plants || state.orders;
+  if (hasData){ state.expired = true; } else { state.conn = "signin"; }
+  render();
 }
 function signOut(){
   if (api.token && window.google) try { google.accounts.oauth2.revoke(api.token, () => {}); } catch {}
-  api.token = null; store.del("mi.tok", true); store.del("mi.signedin"); state.conn = "signin"; render();
+  api.token = null; store.del("mi.tok"); store.del("mi.signedin"); store.del("mi.email"); state.expired = false; state.conn = "signin"; render();
 }
+// Any click in the last 10 minutes of the pass renews it in the background (a click is needed so the browser allows Google's window).
+document.addEventListener("click", e => {
+  if (api.mode !== "google" || !api.tokenClient || !store.get("mi.signedin")) return;
+  if (e.target.closest && e.target.closest("[data-act=signin],[data-act=signout]")) return;
+  if (!api.token || Date.now() > api.tokenExp - 10 * 60_000) signIn(true);
+}, true);
 
 async function connect(){
   render();
@@ -379,13 +396,18 @@ async function connect(){
   api.tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: GOOGLE_CLIENT_ID, scope: SCOPE,
     callback: r => {
-      if (r.error){ toast("Google sign-in didn't finish. Try again.", true); return; }
+      renewing = false;
+      if (r.error){ if (!state.expired && state.conn !== "ready") toast("Google sign-in didn't finish. Try again.", true); return; }
+      const wasExpired = state.expired || state.conn !== "ready";
       api.token = r.access_token; api.tokenExp = Date.now() + (r.expires_in || 3600) * 1000;
-      store.set("mi.tok", JSON.stringify({ t: api.token, e: api.tokenExp }), true); store.set("mi.signedin", "1");
-      state.conn = "ready"; render(); loadAll();
+      store.set("mi.tok", JSON.stringify({ t: api.token, e: api.tokenExp })); store.set("mi.signedin", "1");
+      if (!store.get("mi.email")) fetch("https://www.googleapis.com/oauth2/v3/userinfo", { headers: { Authorization: "Bearer " + api.token } })
+        .then(x => x.json()).then(u => { if (u && u.email) store.set("mi.email", u.email); }).catch(() => {});
+      state.expired = false; state.conn = "ready"; render();
+      if (wasExpired) loadAll(true);
     }
   });
-  try { const t = JSON.parse(store.get("mi.tok", true) || "null"); if (t && t.e > Date.now() + 120_000){ api.token = t.t; api.tokenExp = t.e; } } catch {}
+  try { const t = JSON.parse(store.get("mi.tok") || "null"); if (t && t.e > Date.now() + 120_000){ api.token = t.t; api.tokenExp = t.e; } } catch {}
   if (api.token){ state.conn = "ready"; loadAll(); } else { state.conn = "signin"; render(); }
 }
 
@@ -510,7 +532,7 @@ function loadAll(fresh){
   loadTabs();
   if (fresh && state.view === "prev") loadPrev(true);
 }
-setInterval(() => { if (document.visibilityState === "visible" && !state.editing && !state.adding) loadAll(true); }, REFRESH_MS);
+setInterval(() => { if (document.visibilityState === "visible" && !state.editing && !state.adding && !state.expired) loadAll(true); }, REFRESH_MS);
 
 /* ---------- writing ---------- */
 let toastTimer;
@@ -521,7 +543,7 @@ function toast(msg, bad){
 }
 const WRITE_ERR = {
   moved: "The sheet changed since this page loaded, so nothing was saved. It has been reloaded; try again.",
-  signin: "Sign in with Google again to save.",
+  signin: "Google needed reconnecting. Press Reconnect (or just try again in a moment).",
   approval_required: "Allow this page to use Google Sheets to save changes.",
   not_in_manifest: "Saving is turned off for this page. Turn Google Sheets on in the page's Permissions menu.",
   forbidden: "Your Google account can't edit the Marked Invoices sheet.",
@@ -994,7 +1016,8 @@ function render(){
   const a = document.activeElement; const fid = a && a.id; let sel = null;
   try { sel = a && a.selectionStart; } catch {}
   const drafts = {}; document.querySelectorAll("#view input").forEach(i => { if (i.id) drafts[i.id] = i.value; });
-  $("#view").innerHTML = ({ week: viewWeek, prev: viewPrev, orders: viewOrders, lookup: viewLookup, stickers: viewStickers }[state.view])();
+  const banner = state.expired && api.mode === "google" ? `<div class="sendbar" role="status"><p><b>Google needs a quick reconnect.</b> Everything below is from ${state.readAt ? new Date(state.readAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" }) : "earlier"}. Saving is paused until you reconnect.</p><button class="btn" data-act="signin" type="button">Reconnect</button></div>` : "";
+  $("#view").innerHTML = banner + ({ week: viewWeek, prev: viewPrev, orders: viewOrders, lookup: viewLookup, stickers: viewStickers }[state.view])();
   const host = $("#stickerHost"); const showFrame = state.view === "stickers" && sameOriginStickers();
   host.hidden = !showFrame; if (showFrame) ensureStickerFrame();
   $("#c-stickers").textContent = state.toPrint ? (state.toPrint.reduce((a, r) => a + r.qty, 0) || "") : "";

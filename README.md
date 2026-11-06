@@ -16,7 +16,7 @@ Before every save the page re-reads that row of the sheet. If the row has moved 
 
 1. Open https://blakeplantshack-prog.github.io/marked-invoices/ in Chrome and bookmark it.
 2. Press **Sign in with Google** and use the Google account that has the Marked Invoices sheet (or one it is shared with as an editor).
-3. Google sign-ins last about an hour. When the page asks again, press the button again.
+3. Google only gives a web page a one-hour pass. The page keeps you signed in on that computer and renews the pass quietly when you click around. If it does run out, the page keeps showing everything and a **Reconnect** button appears; one click and you're back (no password).
 
 ## One-time Google setup (so the GitHub page can open the sheet)
 
