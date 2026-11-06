@@ -659,8 +659,7 @@ function overview(groups, attr){
   for (const [name, rows] of sorted){
     const cust = rows.filter(r => r.comments);
     h += `<button class="card" ${attr}="${esc(name)}" type="button"><h3>${esc(name)}</h3>
-      ${cust.length ? `<ul class="custlist">${cust.map(r => `<li><span class="c">${esc(r.comments)}</span><span class="pl">${esc(r.name)} ${esc(r.size)}</span></li>`).join("")}</ul>`
-        : `<span class="nocust">No customer orders</span>`}</button>`;
+      <div class="pills">${cust.length ? pill(["ok", `${cust.length} for customers`]) : `<span class="nocust">No customer orders</span>`}</div></button>`;
   }
   return h + `</div>`;
 }
